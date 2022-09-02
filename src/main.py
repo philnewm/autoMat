@@ -1,4 +1,3 @@
-from __future__ import division
 from maya import cmds
 
 
@@ -9,6 +8,10 @@ class matBuilder(object):
         self.shaderName = name
         self.matSphere = None
         self.sphereShape = None
+        self.dispSubdiv = 6
+        self.dispStrength = 0.025
+        self.dispPadding = self.dispStrength * 0.6
+        self.triplanarBlend = 0
         self.shadingGroup = None
         self.shaderList = []
         self.diffTex = None
@@ -18,26 +21,36 @@ class matBuilder(object):
         self.heightTex = None
         self.textureName = None
         self.textureList = []
+        self.mainPath = "/mnt/Projects/tmp/autoMat_rnd/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_"
         self.matDict = {}  # Use dicitionary for material names based on folder names for keys and texture file paths as list for values
 
         # TODO get rid of hard coded paths
-        self.pathDiff = "/mnt/Projects/tmp/autoMat_rnd/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
-        self.pathMetal = "/mnt/Projects/tmp/autoMat_rnd/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_metalness.jpg"
-        self.pathRough = "/mnt/Projects/tmp/autoMat_rnd/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
-        self.pathNormal = "/mnt/Projects/tmp/autoMat_rnd/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_normal.jpg"
-        self.pathDisplace = "/mnt/Projects/tmp/autoMat_rnd/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_height.jpg"
+        self.pathDiff = self.mainPath + "diffuse.jpg"
+        self.pathMetal = self.mainPath + "metalness.jpg"
+        self.pathRough = self.mainPath + "roughness.jpg"
+        self.pathNormal = self.mainPath + "normal.jpg"
+        self.pathDisplace = self.mainPath + "height.jpg"
         # TODO add optional slots e.g. emissive, sss, opacity, transmission, coat, sheen
 
         self.files = [self.pathDiff, self.pathMetal,
                       self.pathRough, self.pathNormal, self.pathDisplace]
 
     def createSphere(self):
-        self.matSphere, self.sphereShape = cmds.polyCube(name="PreviewSphere")
+        self.matSphere, self.sphereShape = cmds.polyCube(
+            name="PreviewSphere_geo")
+        # TODO figure out cleaner way for shape node name
+        self.sphereShape = self.matSphere + 'Shape'
         cmds.polySmooth(self.matSphere, divisions=3)
         cmds.setAttr(self.sphereShape + '.aiSubdivType', 1)
         cmds.setAttr(self.sphereShape +
-                     '.aiSubdivIterations', 3)  # TODO fix bug
-        cmds.delete(self.matSphere, constructionHistory=True)
+                     '.aiSubdivIterations', self.dispSubdiv)
+        cmds.setAttr(self.sphereShape +
+                     '.aiDispHeight', self.dispStrength)
+        cmds.setAttr(self.sphereShape +
+                     '.aiDispPadding', self.dispPadding)
+
+        cmds.select(self.matSphere)
+        cmds.delete(constructionHistory=True)
 
     def createShader(self):
         self.shader = cmds.shadingNode(
@@ -76,22 +89,28 @@ class matBuilder(object):
         self.roughTex = cmds.shadingNode(
             'aiImage', name=self.roughName, asTexture=True)  # aiImage Node only visible in lit vp
         self.normalTex = cmds.shadingNode(
-            'aiImage', name=self.normalName, asTexture=True)  # aiImage Node only visible in lit vp0
+            'aiImage', name=self.normalName, asTexture=True)  # aiImage Node only visible in lit vp
         self.dispTex = cmds.shadingNode(
             'aiImage', name=self.dispName, asTexture=True)  # aiImage Node only visible in lit vp
         # TODO test aiImage with UDIM
         # TODO add option to use default file node
 
     def setupDiff(self):
-
         # connect image
         cmds.setAttr(self.diffTex + '.filename',
                      self.pathDiff, type='string')
-        # set colrospace
+        # set colorspace
         cmds.setAttr(self.diffTex + '.colorSpace',
                      'Input - Generic - sRGB - Texture', type='string')
+        # create triplanar
+        self.aiTriplanarDiff = cmds.shadingNode(
+            'aiTriplanar', asTexture=True)
+        cmds.setAttr(self.aiTriplanarDiff + '.blend', self.triplanarBlend)
         # connect nodes
         cmds.connectAttr(self.diffTex + '.outColor',
+                         self.aiTriplanarDiff + '.input', force=True)
+
+        cmds.connectAttr(self.aiTriplanarDiff + '.outColor',
                          self.shader + '.baseColor', force=True)
 
     def setupMetal(self):
@@ -102,24 +121,52 @@ class matBuilder(object):
         # set colorspace
         cmds.setAttr(self.metalTex + '.colorSpace',
                      'Utility - Raw', type='string')
-        # connect to shader
-        cmds.connectAttr(self.metalTex + '.outColorR',
+
+        # create triplanar
+        self.aiTriplanarMetal = cmds.shadingNode(
+            'aiTriplanar', asTexture=True)
+        cmds.setAttr(self.aiTriplanarMetal + '.blend', self.triplanarBlend)
+        # connect nodes
+        cmds.connectAttr(self.metalTex + '.outColor',
+                         self.aiTriplanarMetal + '.input', force=True)
+
+        cmds.connectAttr(self.aiTriplanarMetal + '.outColorR',
                          self.shader + '.metalness', force=True)
 
     def setupRough(self):
         # connect image
         cmds.setAttr(self.roughTex + '.filename',
                      self.pathRough, type='string')
-        # set colrospace
+        # set colorspace
         cmds.setAttr(self.roughTex + '.colorSpace',
                      'Utility - Raw', type='string')
 
-        cmds.connectAttr(self.roughTex + '.outColorR',
+        # create triplanar
+        self.aiTriplanarRough = cmds.shadingNode(
+            'aiTriplanar', asTexture=True)
+        cmds.setAttr(self.aiTriplanarRough + '.blend', self.triplanarBlend)
+        # connect nodes
+        cmds.connectAttr(self.roughTex + '.outColor',
+                         self.aiTriplanarRough + '.input', force=True)
+
+        cmds.connectAttr(self.aiTriplanarRough + '.outColorR',
                          self.shader + '.specularRoughness', force=True)
 
     def setupNormal(self):
+
+        # create triplanar
+        self.aiTriplanarNormal = cmds.shadingNode(
+            'aiTriplanar', asTexture=True)
+        cmds.setAttr(self.aiTriplanarNormal + '.blend', self.triplanarBlend)
+        # connect nodes
+        cmds.connectAttr(self.normalTex + '.outColor',
+                         self.aiTriplanarNormal + '.input', force=True)
+
         self.aiNormal = cmds.shadingNode(
             'aiNormalMap', name='aiNormalMap', asUtility=True)
+
+        cmds.connectAttr(self.aiTriplanarNormal + '.outColor',
+                         self.aiNormal + '.input', force=True)
 
         cmds.setAttr(self.normalTex + '.filename',
                      self.pathNormal, type='string')
@@ -127,13 +174,18 @@ class matBuilder(object):
         cmds.setAttr(self.normalTex + '.colorSpace',
                      'Utility - Raw', type='string')
 
-        cmds.connectAttr(self.normalTex + '.outColor',
-                         self.aiNormal + '.input', force=True)
-
         cmds.connectAttr(self.aiNormal + '.outValue',
                          self.shader + '.normalCamera', force=True)
 
     def setupDisp(self):
+        # create triplanar
+        self.aiTriplanarDisp = cmds.shadingNode(
+            'aiTriplanar', asTexture=True)
+        cmds.setAttr(self.aiTriplanarDisp + '.blend', self.triplanarBlend)
+
+        cmds.connectAttr(self.dispTex + '.outColor',
+                         self.aiTriplanarDisp + '.input', force=True)
+
         self.disp = cmds.shadingNode(
             'displacementShader', name='displacementShader', asShader=True)
 
@@ -142,7 +194,8 @@ class matBuilder(object):
 
         cmds.setAttr(self.dispTex + '.colorSpace',
                      'Utility - Raw', type='string')
-        cmds.connectAttr(self.dispTex + '.outColorR',
+
+        cmds.connectAttr(self.aiTriplanarDisp + '.outColorR',
                          self.disp + '.displacement', force=True)
 
         cmds.connectAttr(self.disp + '.displacement',
@@ -161,5 +214,4 @@ if __name__ == "__main__":
     newMat.setupMetal()
     newMat.setupRough()
     newMat.setupNormal()
-    print(cmds.listAttr(newMat.sphereShape))
     newMat.setupDisp()
