@@ -37,9 +37,9 @@ def find(directory: str = texDir):
             for file in files:
                 if file.endswith('.tx'):
                     continue
-                if checkname(file):
+                if getType(file):
                     filePath = os.path.join(path, file)
-                    createImageNode(file, filePath, checkname(
+                    createImageNode(file, filePath, getType(
                         file), renderEngine='ai')
 
 
@@ -86,7 +86,7 @@ def createShaderNode(path: str, renderEngine: str = 'ai'):
                      [1], asShader=True)
 
 
-def checkname(name: str):
+def getType(name: str):
     # TODO check image for color or grayscale
     # TODO ask user for recognized pattern
     for keys, values in texTypes.items():
