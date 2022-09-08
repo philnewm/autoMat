@@ -1,3 +1,4 @@
+from distutils.log import debug
 from maya import cmds
 import os
 
@@ -31,7 +32,7 @@ class FileNode(object):
 
         # setup parameter
         self.splitName()
-        self.createImageNode()
+        self.createNode()
         self.loadImage()
         self.getType()
         self.setColorSpace()
@@ -42,7 +43,7 @@ class FileNode(object):
         if self.debug:
             print(f"node name: {self.nodeName}, path: {self.filePath}")
 
-    def createImageNode(self):
+    def createNode(self):
         # check which file node to create
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
@@ -56,6 +57,8 @@ class FileNode(object):
         # maybe remove
         if self.debug:
             print(f"file node: {self.imageNode}")
+
+        return self.imageNode
 
     def loadImage(self):
         # import image
@@ -81,6 +84,9 @@ class FileNode(object):
         if self.debug:
             print(f"Texture Color conversion: {self.colorSpace}")
 
+    def colorOut(self):
+        return self.nodeName + '.outColor'
+
     def getType(self):
         # TODO check image for color or grayscale
         # TODO ask user for recognized pattern
@@ -96,7 +102,50 @@ class FileNode(object):
                     return keys
 
 
+class TriPlanarNode(object):
+    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, renderEngine: str = 'arnold', debug: bool = 0) -> None:
+        self.blendValue = blend
+        self.renderEngine = renderEngine
+        self.nodeName = nodeName
+        self.triPlanar = None
+        self.inputCon = None
+        self.debug = debug
+
+        self.createNode()
+
+    def createNode(self):
+        # create triplanar
+        if self.renderEngine == 'arnold':
+            self.triPlanar = cmds.shadingNode(
+                'aiTriplanar', name=self.nodeName, asTexture=True)
+            cmds.setAttr(self.triPlanar + '.blend', self.blendValue)
+        if self.renderEngine == 'vray':
+            # TODO  check vray triplanar
+            pass
+
+        if self.renderEngine == 'redshift':
+            # TODO  check redshift triplanar
+            pass
+
+        if self.debug:
+            print(f"Triplanar node: {self.triPlanar}")
+
+        return self.triPlanar
+
+    def connect(self, inputConnection):
+        self.inputCon = inputConnection
+        cmds.connectAttr(self.inputCon,
+                         self.triPlanar + '.input', force=True)
+        if debug:
+            print(
+                f"connected: {self.inputCon} and {self.triPlanar + '.input'}")
+
+
 # test code
 if __name__ == '__main__':
-    path = "/sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
-    newFileNode = FileNode(path, debug=1)
+    path = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
+
+    # this ones nice
+    diffFileNode = FileNode(path, debug=1)
+    diffTriplanarNode = TriPlanarNode(debug=1)
+    diffTriplanarNode.connect(diffFileNode.colorOut())
