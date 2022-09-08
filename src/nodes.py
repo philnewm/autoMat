@@ -1,4 +1,3 @@
-from distutils.log import debug
 from maya import cmds
 import os
 
@@ -6,7 +5,7 @@ import os
 class FileNode(object):
     def __init__(self, imagePath: str, renderEngine: str = 'arnold', debug: bool = 0) -> None:
         self.nodeName = None
-        self.filePath = path
+        self.filePath = diffPath
         self.col_cs = "Input - Generic - sRGB - Texture"
         self.util_cs = "Utility - Raw"
         self.colorSpace = None
@@ -110,6 +109,7 @@ class TriPlanarNode(object):
         self.triPlanar = None
         self.inputCon = None
         self.debug = debug
+        self.inputCon = None
 
         self.createNode()
 
@@ -136,16 +136,115 @@ class TriPlanarNode(object):
         self.inputCon = inputConnection
         cmds.connectAttr(self.inputCon,
                          self.triPlanar + '.input', force=True)
-        if debug:
+        if self.debug:
             print(
                 f"connected: {self.inputCon} and {self.triPlanar + '.input'}")
 
 
+class NormalMapNode(object):
+    def __init__(self, nodeName: str = 'aiNormalMap', normalStrength: float = 1.0, renderEngine: str = 'arnold') -> None:
+        self.nodeName = nodeName
+        self.strength = normalStrength
+        self.normalNode = None
+        self.renderEngine = renderEngine
+
+        self.createNode()
+
+    def createNode(self):
+        if self.renderEngine == 'arnold':
+            self.normalNode = cmds.shadingNode(
+                'aiNormalMap', name=self.nodeName, asUtility=True)
+        else:
+            pass
+
+        print(f"Node created: {self.normalNode}")
+
+    def setStrength(self):
+        pass
+
+    def connect(self, inputConnection):
+        self.inputCon = inputConnection
+        cmds.connectAttr(self.inputCon,
+                         self.normalNode + '.input', force=True)
+        if self.debug:
+            print(
+                f"connected: {self.inputCon} and {self.normalNode + '.input'}")
+
+
+class DisplacementNode(object):
+    def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1) -> None:
+        self.nodeName = nodeName
+        self.scale = scale
+        self.dispNode = None
+
+        self.createNode()
+
+    def createNode(self):
+        # TODO check if different nodes for other engines
+        self.dispNode = cmds.shadingNode(
+            'displacementShader', name=self.nodeName, asShader=True)
+        print(f"Node created: {self.dispNode}")
+
+    def setStrength(self):
+        cmds.setAttr(self.dispNode + '.scale', self.scale)
+
+    def connect(self, inputConnection):
+        self.inputCon = inputConnection
+        cmds.connectAttr(self.inputCon + '.outColorR',
+                         self.dispNode + '.displacement', force=True)
+        if self.debug:
+            print(
+                f"connected: {self.inputCon} and {self.dispNode + '.displacement'}")
+
+
+class PBRShader(object):
+    def __init__(self, nodeName: str = 'PBRShader', renderEngine: str = 'arnold') -> None:
+        self.nodeName = nodeName
+        self.renderEngine = renderEngine
+        self.shader = None
+
+    def createArnoldPBRShader(self):
+        self.shader = cmds.shadingNode(
+            'aiStandardSurface', name=self.nodeName, asShader=True)
+
+    def createVrayPBRShader(self):
+        pass
+        # TODO name of vray pbr shader
+        # self.shader =
+
+    # smarter decision for engine specific types needed
+    def createRedshiftPBRShader(self):
+        self.shader = cmds.shadingNode(
+            'RedshiftMaterial', name=self.nodeName, asShader=True)
+
+    def connectDiff(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.shader + '.baseColor', force=True)
+
+    def connectMetal(self, inputConnection):
+        print(inputConnection)
+        cmds.connectAttr(inputConnection + '.outColorR',
+                         self.shader + '.metalness', force=True)
+
+    def connectRough(self, inputConnection):
+        cmds.connectAttr(inputConnection + '.outColorR',
+                         self.shader + '.specularRoughness', force=True)
+
+    def connectNormal(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.shader + '.normalCamera', force=True)
+
+
 # test code
 if __name__ == '__main__':
-    path = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
+    diffPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
+    roughPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
 
     # this ones nice
-    diffFileNode = FileNode(path, debug=1)
-    diffTriplanarNode = TriPlanarNode(debug=1)
-    diffTriplanarNode.connect(diffFileNode.colorOut())
+    # dispFileNode = FileNode(path, debug=1)
+    # dispMapNode = DisplacementNode()
+    # dispMapNode.connect(dispFileNode.colorOut())
+    newShader = PBRShader(os.path.split(os.path.split(diffPath)[0])[1])
+    newShader.createArnoldPBRShader()
+    newDiffTex = FileNode(diffPath, debug=1)
+    newShader.connectDiff(newDiffTex.colorOut())
