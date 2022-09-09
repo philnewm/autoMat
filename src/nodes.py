@@ -5,12 +5,13 @@ import os
 class FileNode(object):
     def __init__(self, imagePath: str, renderEngine: str = 'arnold', debug: bool = 0) -> None:
         self.nodeName = None
-        self.filePath = diffPath
+        self.filePath = imagePath
+        # TODO change for maya default aces
         self.col_cs = "Input - Generic - sRGB - Texture"
-        self.util_cs = "Utility - Raw"
+        self.util_cs = "Utility - Raw"  # TODO change for maya default aces
         self.colorSpace = None
         self.renderEngine = renderEngine
-        self.texType = 'diffuse'
+        self.texType = None
         self.name = None
         self.enableAutoTX = 1
         self.debug = debug
@@ -77,7 +78,7 @@ class FileNode(object):
         else:
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.util_cs, type='string')
-            self.colorSpace = self.col_cs
+            self.colorSpace = self.util_cs
 
         cmds.setAttr(self.nodeName + '.ignoreColorSpaceFileRules', 1)
         if self.debug:
@@ -85,6 +86,9 @@ class FileNode(object):
 
     def colorOut(self):
         return self.nodeName + '.outColor'
+
+    def redColorOut(self):
+        return self.nodeName + '.outColor.outColorR'
 
     def getType(self):
         # TODO check image for color or grayscale
@@ -170,6 +174,9 @@ class NormalMapNode(object):
             print(
                 f"connected: {self.inputCon} and {self.normalNode + '.input'}")
 
+    def normalOut(self):
+        return self.nodeName + '.outValue'
+
 
 class DisplacementNode(object):
     def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1) -> None:
@@ -190,7 +197,7 @@ class DisplacementNode(object):
 
     def connect(self, inputConnection):
         self.inputCon = inputConnection
-        cmds.connectAttr(self.inputCon + '.outColorR',
+        cmds.connectAttr(self.inputCon,
                          self.dispNode + '.displacement', force=True)
         if self.debug:
             print(
@@ -223,11 +230,11 @@ class PBRShader(object):
 
     def connectMetal(self, inputConnection):
         print(inputConnection)
-        cmds.connectAttr(inputConnection + '.outColorR',
+        cmds.connectAttr(inputConnection,
                          self.shader + '.metalness', force=True)
 
     def connectRough(self, inputConnection):
-        cmds.connectAttr(inputConnection + '.outColorR',
+        cmds.connectAttr(inputConnection,
                          self.shader + '.specularRoughness', force=True)
 
     def connectNormal(self, inputConnection):
@@ -238,13 +245,24 @@ class PBRShader(object):
 # test code
 if __name__ == '__main__':
     diffPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
-    roughPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
+    metalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_metalness.jpg"
+    roughPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
+    normalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_normal.jpg"
 
     # this ones nice
     # dispFileNode = FileNode(path, debug=1)
     # dispMapNode = DisplacementNode()
     # dispMapNode.connect(dispFileNode.colorOut())
+    #
     newShader = PBRShader(os.path.split(os.path.split(diffPath)[0])[1])
     newShader.createArnoldPBRShader()
     newDiffTex = FileNode(diffPath, debug=1)
+    newMetalTex = FileNode(metalPath, debug=1)
+    newRoughTex = FileNode(roughPath, debug=1)
+    newNormalTex = FileNode(normalPath, debug=1)
+    newNormaMap = NormalMapNode()
     newShader.connectDiff(newDiffTex.colorOut())
+    newShader.connectMetal(newMetalTex.redColorOut())
+    newShader.connectRough(newRoughTex.redColorOut())
+    newShader.connectNormal(newNormaMap.normalOut())
+    newNormaMap.connect(newNormalTex.colorOut())
