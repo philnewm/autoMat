@@ -1,23 +1,24 @@
+from distutils.log import debug
 from maya import cmds
 import os
 
 
 class FileNode(object):
-    def __init__(self, imagePath: str, renderEngine: str = 'arnold', debug: bool = 0) -> None:
-        self.nodeName = None
+    def __init__(self, nodeName: str, imagePath: str, texType: str, renderEngine: str = 'arnold', enableAutoTX: bool = True, debug: bool = False) -> None:
+        self.nodeName = nodeName
         self.filePath = imagePath
         # TODO change for maya default aces
         self.col_cs = "Input - Generic - sRGB - Texture"
         self.util_cs = "Utility - Raw"  # TODO change for maya default aces
         self.colorSpace = None
         self.renderEngine = renderEngine
-        self.texType = None
+        self.texType = texType
         self.name = None
-        self.enableAutoTX = 1
+        self.enableAutoTX = enableAutoTX
         self.debug = debug
 
         # TODO check if really neccessary here
-        self.texTypes = {'diffuse': ('diff', 'albedo', 'color', 'rgb'),
+        self.texTypes = {'color': ('diff', 'albedo', 'color', 'rgb'),
                          'metalness': ('met', ),
                          'roughness': ('rough', ),
                          'glossiness': ('gloss', ),
@@ -30,21 +31,15 @@ class FileNode(object):
                          'coat': ('coat', ),
                          'sheen': ('sheen', )}
 
-        # setup parameter
-        self.splitName()
+        self.colorOut = self.nodeName + '.outColor'
+        self.redColorOut = self.nodeName + '.outColor.outColorR'
         self.createNode()
         self.loadImage()
-        self.getType()
         self.setColorSpace()
-
-    def splitName(self):
-        self.nodeName = os.path.split(self.filePath)[1].split('.')[0]
-
-        if self.debug:
-            print(f"node name: {self.nodeName}, path: {self.filePath}")
 
     def createNode(self):
         # check which file node to create
+        print(self.renderEngine)
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
             # create file node
@@ -58,7 +53,7 @@ class FileNode(object):
         if self.debug:
             print(f"file node: {self.imageNode}")
 
-        return self.imageNode
+        return self.nodeName
 
     def loadImage(self):
         # import image
@@ -71,7 +66,7 @@ class FileNode(object):
                 f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
     def setColorSpace(self):
-        if self.texType == 'diffuse':  # TODO remove double if
+        if self.texType == 'color':  # TODO remove double if
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.col_cs, type='string')
             self.colorSpace = self.col_cs
@@ -84,13 +79,7 @@ class FileNode(object):
         if self.debug:
             print(f"Texture Color conversion: {self.colorSpace}")
 
-    def colorOut(self):
-        return self.nodeName + '.outColor'
-
-    def redColorOut(self):
-        return self.nodeName + '.outColor.outColorR'
-
-    def getType(self):
+    def getType(self):  # move out of here
         # TODO check image for color or grayscale
         # TODO ask user for recognized pattern
         texName = os.path.split(self.filePath)[1]
@@ -106,14 +95,16 @@ class FileNode(object):
 
 
 class TriPlanarNode(object):
-    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, renderEngine: str = 'arnold', debug: bool = 0) -> None:
+    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, renderEngine: str = 'arnold', debug: bool = False) -> None:
         self.blendValue = blend
         self.renderEngine = renderEngine
         self.nodeName = nodeName
         self.triPlanar = None
-        self.inputCon = None
+        self.dataIn = self.nodeName + '.input'
         self.debug = debug
-        self.inputCon = None
+        self.outColor = self.nodeName + '.outColor'
+        self.outColorRed = self.outColor + '.outColorR'
+        self.blend = nodeName + '.blend'
 
         self.createNode()
 
@@ -122,7 +113,7 @@ class TriPlanarNode(object):
         if self.renderEngine == 'arnold':
             self.triPlanar = cmds.shadingNode(
                 'aiTriplanar', name=self.nodeName, asTexture=True)
-            cmds.setAttr(self.triPlanar + '.blend', self.blendValue)
+            cmds.setAttr(self.blend, self.blendValue)
         if self.renderEngine == 'vray':
             # TODO  check vray triplanar
             pass
@@ -134,23 +125,45 @@ class TriPlanarNode(object):
         if self.debug:
             print(f"Triplanar node: {self.triPlanar}")
 
-        return self.triPlanar
+        return self.nodeName
 
-    def connect(self, inputConnection):
-        self.inputCon = inputConnection
-        cmds.connectAttr(self.inputCon,
-                         self.triPlanar + '.input', force=True)
+    def setBlend(self, blend: float):
+        self.blendValue = blend
+        cmds.setAttr(self.blend, self.blendValue)
+
         if self.debug:
-            print(
-                f"connected: {self.inputCon} and {self.triPlanar + '.input'}")
+            print(f"changed blend value to: {self.blendValue}")
+
+    def connect(self, input, output):
+        cmds.connectAttr(input,
+                         self.dataIn, force=True)
+        cmds.connectAttr(self.outColor, output, force=True)
+
+        if self.debug:
+            print(f"connected {input} as input and {output} as output")
+
+    def connectIn(self, input):
+        cmds.connectAttr(input, self.dataIn, force=True)
+
+        if self.debug:
+            print(f"connected {input} as input to {self.dataIn}")
+
+    def connectOut(self, output):
+        cmds.connectAttr(self.outColor, output, force=True)
+
+        if self.debug:
+            print(f"connected {self.outColor} as input to {output}")
 
 
 class NormalMapNode(object):
-    def __init__(self, nodeName: str = 'aiNormalMap', normalStrength: float = 1.0, renderEngine: str = 'arnold') -> None:
+    def __init__(self, nodeName: str = 'aiNormalMap', normalStrength: float = 1.0, renderEngine: str = 'arnold', debug: bool = False) -> None:
         self.nodeName = nodeName
         self.strength = normalStrength
         self.normalNode = None
         self.renderEngine = renderEngine
+        self.normalOut = self.nodeName + '.outValue'
+        self.dataIn = self.nodeName + '.input'
+        self.debug = debug
 
         self.createNode()
 
@@ -166,53 +179,90 @@ class NormalMapNode(object):
     def setStrength(self):
         pass
 
-    def connect(self, inputConnection):
-        self.inputCon = inputConnection
-        cmds.connectAttr(self.inputCon,
-                         self.normalNode + '.input', force=True)
+    # TODO move connection to builder, only output connection name
+    def connect(self, input, output):
+        cmds.connectAttr(input, self.dataIn, force=True)
+        cmds.connectAttr(self.normalOut, output, force=True)
         if self.debug:
-            print(
-                f"connected: {self.inputCon} and {self.normalNode + '.input'}")
+            print(f"connected {input} as input and {output} as output")
 
-    def normalOut(self):
-        return self.nodeName + '.outValue'
+    def connectIn(self, input):
+        cmds.connectAttr(input, self.dataIn, force=True)
+
+        if self.debug:
+            print(f"connected {input} as input to {self.dataIn}")
+
+    def connectOut(self, output):
+        cmds.connectAttr(self.normalOut, output, force=True)
+
+        if self.debug:
+            print(f"connected {self.normalOut} as input to {output}")
 
 
 class DisplacementNode(object):
-    def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1) -> None:
+    def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1, debug: bool = False) -> None:
         self.nodeName = nodeName
         self.scale = scale
         self.dispNode = None
+        self.dispIn = self.nodeName + '.displacement'
+        self.dispOut = self.nodeName + '.displacement'
+        self.debug = debug
 
+        # execute default methods
         self.createNode()
 
     def createNode(self):
-        # TODO check if different nodes for other engines
+        # TODO check if different nodes for other render engines
         self.dispNode = cmds.shadingNode(
             'displacementShader', name=self.nodeName, asShader=True)
         print(f"Node created: {self.dispNode}")
 
-    def setStrength(self):
+    def setScale(self):
         cmds.setAttr(self.dispNode + '.scale', self.scale)
 
-    def connect(self, inputConnection):
-        self.inputCon = inputConnection
-        cmds.connectAttr(self.inputCon,
-                         self.dispNode + '.displacement', force=True)
+    def connect(self, input: str, output: str):
+        cmds.connectAttr(input,
+                         self.dispIn, force=True)
+        cmds.connectAttr(self.dispOut, output, force=True)
         if self.debug:
             print(
-                f"connected: {self.inputCon} and {self.dispNode + '.displacement'}")
+                f"connected: {input} as input and {output} as output")
+
+    def connectIn(self, input: str):
+        cmds.connectAttr(input,
+                         self.dispIn, force=True)
+        if self.debug:
+            print(
+                f"connected: {input} as input to {self.dispIn}")
+
+    def connectOut(self, output: str):
+        cmds.connectAttr(self.dispOut, output,
+                         force=True)
+        if self.debug:
+            print(
+                f"connected: {self.dispOut} as input to {output}")
 
 
 class PBRShader(object):
-    def __init__(self, nodeName: str = 'PBRShader', renderEngine: str = 'arnold') -> None:
+    def __init__(self, nodeName: str = 'PBRShader', renderEngine: str = 'arnold', debug: bool = False) -> None:
         self.nodeName = nodeName
         self.renderEngine = renderEngine
         self.shader = None
+        self.colorOut = nodeName + '.outColor'
+        self.baseCol = None
+        self.metal = None
+        self.rough = None
+        self.normal = None
 
     def createArnoldPBRShader(self):
         self.shader = cmds.shadingNode(
             'aiStandardSurface', name=self.nodeName, asShader=True)
+
+        # set input names
+        self.baseCol = self.nodeName + '.baseColor'
+        self.metal = self.nodeName + '.metalness'
+        self.rough = self.nodeName + '.specularRoughness'
+        self.normal = self.nodeName + '.normalCamera'
 
     def createVrayPBRShader(self):
         pass
@@ -224,22 +274,72 @@ class PBRShader(object):
         self.shader = cmds.shadingNode(
             'RedshiftMaterial', name=self.nodeName, asShader=True)
 
-    def connectDiff(self, inputConnection):
+    # TODO move connection to builder, only output connection name
+    def connDiff(self, inputConnection):
         cmds.connectAttr(inputConnection,
-                         self.shader + '.baseColor', force=True)
+                         self.baseCol, force=True)
 
-    def connectMetal(self, inputConnection):
-        print(inputConnection)
+    def connMetal(self, inputConnection):
         cmds.connectAttr(inputConnection,
-                         self.shader + '.metalness', force=True)
+                         self.metal, force=True)
 
-    def connectRough(self, inputConnection):
+    def connRough(self, inputConnection):
         cmds.connectAttr(inputConnection,
-                         self.shader + '.specularRoughness', force=True)
+                         self.rough, force=True)
 
-    def connectNormal(self, inputConnection):
+    def connNormal(self, inputConnection):
         cmds.connectAttr(inputConnection,
-                         self.shader + '.normalCamera', force=True)
+                         self.normal, force=True)
+
+
+class ShadingGroup(object):
+    def __init__(self, nodeName, debug: bool = False) -> None:
+        self.nodeName = nodeName
+        self.aiSurfaceShaderInput = self.nodeName + '.aiSurfaceShader'
+        self.surfaceShaderInput = self.nodeName + '.surfaceShader'
+        self.displacementShaderIn = self.nodeName + '.displacementShader'
+
+        # execute default methods
+        self.createNode()
+
+    def createNode(self):
+        self.nodeName = cmds.sets(name=self.nodeName,
+                                  renderable=True, noSurfaceShader=True, empty=True)
+
+
+class PrevSphere(object):
+    def __init__(self, nodeName: str = 'Preview_Sphere_geo', smoothSteps: int = 2, dispSubdivs: int = 3, tesselation: bool = True, dispHeight: float = 1.0) -> None:
+        self.nodeName = nodeName
+        self.shapeNodeName = nodeName + 'Shape'
+        self.smoothSteps = smoothSteps
+        self.dispSubdivs = dispSubdivs
+        self.tess = tesselation
+        self.dispHeight = dispHeight
+        self.dispPadding = 0.6 * dispHeight
+
+        # defaults
+        self.createNode()
+        self.setupDisplacement()
+
+    def createNode(self):
+        cmds.polyCube(name=self.nodeName)
+        cmds.polySmooth(self.nodeName, divisions=self.smoothSteps)
+
+    def setupDisplacement(self):
+        cmds.setAttr(self.shapeNodeName + '.aiSubdivType', 1)
+        cmds.setAttr(self.shapeNodeName +
+                     '.aiSubdivIterations', self.dispSubdivs)
+        cmds.setAttr(self.shapeNodeName +
+                     '.aiDispHeight', self.dispHeight)
+        cmds.setAttr(self.shapeNodeName +
+                     '.aiDispPadding', self.dispPadding)
+
+        cmds.select(self.nodeName)
+        cmds.delete(constructionHistory=True)
+
+    def assignShader(self, shader: str):
+        cmds.select(self.nodeName, replace=True)
+        cmds.hyperShade(assign=shader)
 
 
 # test code
@@ -248,6 +348,7 @@ if __name__ == '__main__':
     metalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_metalness.jpg"
     roughPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
     normalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_normal.jpg"
+    dispPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_height.jpg"
 
     # this ones nice
     # dispFileNode = FileNode(path, debug=1)
@@ -256,13 +357,23 @@ if __name__ == '__main__':
     #
     newShader = PBRShader(os.path.split(os.path.split(diffPath)[0])[1])
     newShader.createArnoldPBRShader()
-    newDiffTex = FileNode(diffPath, debug=1)
-    newMetalTex = FileNode(metalPath, debug=1)
-    newRoughTex = FileNode(roughPath, debug=1)
-    newNormalTex = FileNode(normalPath, debug=1)
-    newNormaMap = NormalMapNode()
-    newShader.connectDiff(newDiffTex.colorOut())
-    newShader.connectMetal(newMetalTex.redColorOut())
-    newShader.connectRough(newRoughTex.redColorOut())
-    newShader.connectNormal(newNormaMap.normalOut())
-    newNormaMap.connect(newNormalTex.colorOut())
+    newDiffTex = FileNode('diffuse', diffPath, texType='color', debug=True)
+    newMetalTex = FileNode('metal', metalPath, texType='metal', debug=True)
+    newRoughTex = FileNode('roughness', roughPath,
+                           texType='roughness', debug=True)
+    newNormalTex = FileNode('normal', normalPath, texType='normal', debug=True)
+    newNormaMap = NormalMapNode(debug=True)
+    newDispTex = FileNode('displacement', dispPath,
+                          texType='displacement', debug=True)
+    newDispShader = DisplacementNode(debug=True)
+    newShader.connDiff(newDiffTex.colorOut)
+    newShader.connMetal(newMetalTex.redColorOut)
+    newShader.connRough(newRoughTex.redColorOut)
+    newNormaMap.connect(newNormalTex.colorOut, newShader.normal)
+    newShadingGrp = ShadingGroup('preview_grp')
+    cmds.connectAttr(newShader.colorOut, newShadingGrp.aiSurfaceShaderInput)
+    newDispShader.connect(newDispTex.redColorOut,
+                          newShadingGrp.displacementShaderIn)
+
+    newPrevSphere = PrevSphere('Preview_Sphere_geo', dispHeight=0.2)
+    newPrevSphere.assignShader(newShader.nodeName)
