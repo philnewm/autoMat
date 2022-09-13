@@ -17,25 +17,12 @@ class FileNode(object):
         self.enableAutoTX = enableAutoTX
         self.debug = debug
 
-        # TODO check if really neccessary here
-        self.texTypes = {'color': ('diff', 'albedo', 'color', 'rgb'),
-                         'metalness': ('met', ),
-                         'roughness': ('rough', ),
-                         'glossiness': ('gloss', ),
-                         'normal': ('nrm', 'nor'),
-                         'displacement': ('height', 'disp'),
-                         'emissive': ('emiss', 'illum', 'emit'),
-                         'sss': ('sss', 'subsurf'),
-                         'transmission': ('trans', ),
-                         'opacity': ('op', 'alpha', 'transp'),
-                         'coat': ('coat', ),
-                         'sheen': ('sheen', )}
-
         self.colorOut = self.nodeName + '.outColor'
         self.redColorOut = self.nodeName + '.outColor.outColorR'
-        self.createNode()
-        self.loadImage()
-        self.setColorSpace()
+        if texType:
+            self.createNode()
+            self.loadImage()
+            self.setColorSpace()
 
     def createNode(self):
         # check which file node to create
@@ -79,23 +66,9 @@ class FileNode(object):
         if self.debug:
             print(f"Texture Color conversion: {self.colorSpace}")
 
-    def getType(self):  # move out of here
-        # TODO check image for color or grayscale
-        # TODO ask user for recognized pattern
-        texName = os.path.split(self.filePath)[1]
-        texName = texName.split('.')[0]
-        for keys, values in self.texTypes.items():
-            for val in values:
-                if val in texName.lower():
-                    self.texType = keys
-                    if self.debug:
-                        print(f"texture type: {self.texType}")
-                    # returns texture types
-                    return keys
-
 
 class TriPlanarNode(object):
-    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, renderEngine: str = 'arnold', debug: bool = False) -> None:
+    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, scale: float = 1.0, renderEngine: str = 'arnold', debug: bool = False) -> None:
         self.blendValue = blend
         self.renderEngine = renderEngine
         self.nodeName = nodeName
@@ -105,8 +78,10 @@ class TriPlanarNode(object):
         self.outColor = self.nodeName + '.outColor'
         self.outColorRed = self.outColor + '.outColorR'
         self.blend = nodeName + '.blend'
+        self.scale = scale
 
         self.createNode()
+        self.setScale()
 
     def createNode(self):
         # create triplanar
@@ -134,10 +109,23 @@ class TriPlanarNode(object):
         if self.debug:
             print(f"changed blend value to: {self.blendValue}")
 
-    def connect(self, input, output):
+    def setScale(self):
+        cmds.setAttr(self.nodeName + '.scaleX', self.scale)
+        cmds.setAttr(self.nodeName + '.scaleY', self.scale)
+        cmds.setAttr(self.nodeName + '.scaleZ', self.scale)
+
+    def connectColor(self, input, output):
         cmds.connectAttr(input,
                          self.dataIn, force=True)
         cmds.connectAttr(self.outColor, output, force=True)
+
+        if self.debug:
+            print(f"connected {input} as input and {output} as output")
+
+    def connectData(self, input, output):  # very spaghetti
+        cmds.connectAttr(input,
+                         self.dataIn, force=True)
+        cmds.connectAttr(self.outColorRed, output, force=True)
 
         if self.debug:
             print(f"connected {input} as input and {output} as output")
@@ -291,6 +279,9 @@ class PBRShader(object):
         cmds.connectAttr(inputConnection,
                          self.normal, force=True)
 
+    def connColOut(self, output):
+        cmds.connectAttr(self.colorOut, output, force=True)
+
 
 class ShadingGroup(object):
     def __init__(self, nodeName, debug: bool = False) -> None:
@@ -315,7 +306,7 @@ class PrevSphere(object):
         self.dispSubdivs = dispSubdivs
         self.tess = tesselation
         self.dispHeight = dispHeight
-        self.dispPadding = 0.6 * dispHeight
+        self.dispPadding = 0.8 * dispHeight
 
         # defaults
         self.createNode()
@@ -341,6 +332,9 @@ class PrevSphere(object):
         cmds.select(self.nodeName, replace=True)
         cmds.hyperShade(assign=shader)
 
+    def moveOver(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
+        cmds.move(x, y, z, self.nodeName)
+
 
 # test code
 if __name__ == '__main__':
@@ -365,15 +359,25 @@ if __name__ == '__main__':
     newNormaMap = NormalMapNode(debug=True)
     newDispTex = FileNode('displacement', dispPath,
                           texType='displacement', debug=True)
+
+    triPlanarScale = 0.4
+    triPlanarBlend = 0
+
+    DiffTriplanar = TriPlanarNode('tri_01', triPlanarScale, triPlanarScale)
+    DiffTriplanar.connectColor(newDiffTex.colorOut, newShader.baseCol)
+    MetalTriplanar = TriPlanarNode('tri_02', triPlanarScale, triPlanarScale)
+    MetalTriplanar.connectData(newMetalTex.colorOut, newShader.metal)
+    RoughTriplanar = TriPlanarNode('tri_03', triPlanarScale, triPlanarScale)
+    RoughTriplanar.connectData(newRoughTex.colorOut, newShader.rough)
+    NormalTriplanar = TriPlanarNode('tri_04', triPlanarScale, triPlanarScale)
+    NormalTriplanar.connectColor(newNormalTex.colorOut, newNormaMap.dataIn)
     newDispShader = DisplacementNode(debug=True)
-    newShader.connDiff(newDiffTex.colorOut)
-    newShader.connMetal(newMetalTex.redColorOut)
-    newShader.connRough(newRoughTex.redColorOut)
-    newNormaMap.connect(newNormalTex.colorOut, newShader.normal)
+    DispTriplanar = TriPlanarNode('tri_05', triPlanarScale, triPlanarScale)
+    DispTriplanar.connectData(newDispTex.colorOut, newDispShader.dispIn)
+    newNormaMap.connectOut(newShader.normal)
     newShadingGrp = ShadingGroup('preview_grp')
     cmds.connectAttr(newShader.colorOut, newShadingGrp.aiSurfaceShaderInput)
-    newDispShader.connect(newDispTex.redColorOut,
-                          newShadingGrp.displacementShaderIn)
+    newDispShader.connectOut(newShadingGrp.displacementShaderIn)
 
-    newPrevSphere = PrevSphere('Preview_Sphere_geo', dispHeight=0.2)
+    newPrevSphere = PrevSphere('Preview_Sphere_geo', dispHeight=0.1)
     newPrevSphere.assignShader(newShader.nodeName)
