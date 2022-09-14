@@ -1,6 +1,7 @@
 from imp import reload
 from maya import cmds
 import maya.mel as mel
+from math import sqrt
 import nodes
 import os
 reload(nodes)
@@ -37,13 +38,16 @@ class autoMat(object):
         moveStep = 0
         triScale = 0.35  # TODO remove hardcoded values
         triBlend = 1.0
+        columns = round(sqrt(len(self.dataDict.keys())))
+
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
             newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
             # assign to preview mesh
-            newShader.assigntoSphere(-2 * moveStep, 0, 0, debug=True)
+            newShader.assigntoSphere(-2 * (moveStep % columns), 0,
+                                     (moveStep // columns) * 2, debug=True)
             moveStep += 1
 
             for v in value:
