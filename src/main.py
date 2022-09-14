@@ -31,91 +31,45 @@ class autoMat(object):
                          'sheen': ('sheen', )}
         # default execution
         self.findFiles()
-        self.setupMaterial()
+        self.setupMaterialTrip()
 
-    def setupMaterial(self):
+    def setupMaterialTrip(self):
         moveStep = 0
-        triScale = 0.35
+        triScale = 0.35  # TODO remove hardcoded values
         triBlend = 1.0
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
-            newShader = nodes.PBRShader(shaderNodeName, debug=True)
-            newShader.createArnoldPBRShader()
+            newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
-            # shading group
-            shadingGrp = nodes.ShadingGroup(
-                shaderNodeName + '_ShaGrp', debug=True)
-            newShader.connColOut(shadingGrp.aiSurfaceShaderInput)
-
-            # preview mesh
-            prevSphere = nodes.PrevSphere(
-                newShader.nodeName + '_PreviewSphere_geo', 3, dispHeight=0.1)
-            prevSphere.assignShader(newShader.nodeName)
-            prevSphere.moveOver(-2 * moveStep, 0, 0)
+            # assign to preview mesh
+            newShader.assigntoSphere(-2 * moveStep, 0, 0, debug=True)
             moveStep += 1
 
             for v in value:
                 texNodeName = v.split('.')[0]
                 texFilePath = os.path.join(key, v)
                 texType = self.getType(texNodeName)
+
                 if texType == 'color':
-                    tex = nodes.FileNode(texNodeName, texFilePath,
-                                         texType, debug=True)
-                    if self.triPlanar:
-                        triplanar = nodes.TriPlanarNode(
-                            'tri_' + texNodeName, triBlend, triScale)
-                        triplanar.connectColor(tex.colorOut, newShader.baseCol)
-                    else:
-                        # bamybe rename to color
-                        newShader.connDiff(tex.colorOut)
+                    newShader.setupTripColor(
+                        texNodeName, texFilePath, texType, triBlend, triScale)
 
                 if texType == 'metalness':
-                    tex = nodes.FileNode(texNodeName, texFilePath,
-                                         texType, debug=True)
-                    if self.triPlanar:
-                        triplanar = nodes.TriPlanarNode(
-                            'tri_' + texNodeName, triBlend, triScale)
-                        triplanar.connectData(tex.colorOut, newShader.metal)
-                    else:
-                        newShader.connMetal(tex.redColorOut)
+                    newShader.setupTripMetalness(
+                        texNodeName, texFilePath, texType, triBlend, triScale)
 
                 if texType == 'roughness':
-                    tex = nodes.FileNode(texNodeName, texFilePath,
-                                         texType, debug=True)
-                    if self.triPlanar:
-                        triplanar = nodes.TriPlanarNode(
-                            'tri_' + texNodeName, triBlend, triScale)
-                        triplanar.connectData(tex.colorOut, newShader.rough)
-                    else:
-                        newShader.connRough(tex.redColorOut)
+                    newShader.setupTripRoughness(
+                        texNodeName, texFilePath, texType, triBlend, triScale)
 
                 if texType == 'normal':
-                    tex = nodes.FileNode(texNodeName, texFilePath,
-                                         texType, debug=True)
-                    normalMap = nodes.NormalMapNode(
-                        texNodeName + '_ainormalMap')
-                    if self.triPlanar:
-                        triplanar = nodes.TriPlanarNode(
-                            'tri_' + texNodeName, triBlend, triScale)
-                        triplanar.connectColor(tex.colorOut, normalMap.dataIn)
-                        newShader.connNormal(normalMap.normalOut)
-                    else:
-                        normalMap.connect(tex.colorOut, newShader.normal)
+                    newShader.setupTripNormal(
+                        texNodeName, texFilePath, texType, triBlend, triScale)
 
                 if texType == 'displacement':
-                    tex = nodes.FileNode(
-                        texNodeName, texFilePath, texType, debug=True)
-                    dispShader = nodes.DisplacementNode(
-                        texNodeName + '_dispShader', debug=True)
-                    if self.triPlanar:
-                        triplanar = nodes.TriPlanarNode(
-                            'tri_' + texNodeName, triBlend, triScale)
-                        triplanar.connectData(tex.colorOut, dispShader.dispIn)
-                        dispShader.connectOut(shadingGrp.displacementShaderIn)
-                    else:
-                        dispShader.connect(
-                            tex.redColorOut, shadingGrp.displacementShaderIn)
+                    newShader.setupTripDisplacement(
+                        texNodeName, texFilePath, texType, triBlend, triScale)
 
     def getType(self, name: str):
         # TODO check image for color or grayscale

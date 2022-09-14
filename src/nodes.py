@@ -51,6 +51,7 @@ class FileNode(object):
         if self.debug:
             print(
                 f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
+        # TODO option for udims
 
     def setColorSpace(self):
         if self.texType == 'color':  # TODO remove double if
@@ -71,13 +72,13 @@ class TriPlanarNode(object):
     def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, scale: float = 1.0, renderEngine: str = 'arnold', debug: bool = False) -> None:
         self.blendValue = blend
         self.renderEngine = renderEngine
-        self.nodeName = nodeName
+        self.nodeName = nodeName + '_trip'
         self.triPlanar = None
         self.dataIn = self.nodeName + '.input'
         self.debug = debug
         self.outColor = self.nodeName + '.outColor'
         self.outColorRed = self.outColor + '.outColorR'
-        self.blend = nodeName + '.blend'
+        self.blend = self.nodeName + '.blend'
         self.scale = scale
 
         self.createNode()
@@ -145,7 +146,7 @@ class TriPlanarNode(object):
 
 class NormalMapNode(object):
     def __init__(self, nodeName: str = 'aiNormalMap', normalStrength: float = 1.0, renderEngine: str = 'arnold', debug: bool = False) -> None:
-        self.nodeName = nodeName
+        self.nodeName = nodeName + '_aiNormalMap'
         self.strength = normalStrength
         self.normalNode = None
         self.renderEngine = renderEngine
@@ -162,7 +163,7 @@ class NormalMapNode(object):
         else:
             pass
 
-        print(f"Node created: {self.normalNode}")
+        print(f"NormalMap Node created: {self.normalNode}")
 
     def setStrength(self):
         pass
@@ -189,7 +190,7 @@ class NormalMapNode(object):
 
 class DisplacementNode(object):
     def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1, debug: bool = False) -> None:
-        self.nodeName = nodeName
+        self.nodeName = nodeName + '_dispShader'
         self.scale = scale
         self.dispNode = None
         self.dispIn = self.nodeName + '.displacement'
@@ -231,39 +232,22 @@ class DisplacementNode(object):
                 f"connected: {self.dispOut} as input to {output}")
 
 
-class PBRShader(object):
-    def __init__(self, nodeName: str = 'PBRShader', renderEngine: str = 'arnold', debug: bool = False) -> None:
+class arnoldPBRShader(object):
+    def __init__(self, nodeName: str = 'PBRShader', debug: bool = False) -> None:
         self.nodeName = nodeName
-        self.renderEngine = renderEngine
-        self.shader = None
+        self.shadingGrpName = nodeName + '_shaGrp'
+        self.shadGrp = None
         self.colorOut = nodeName + '.outColor'
-        self.baseCol = None
-        self.metal = None
-        self.rough = None
-        self.normal = None
-
-    def createArnoldPBRShader(self):
-        self.shader = cmds.shadingNode(
-            'aiStandardSurface', name=self.nodeName, asShader=True)
-
-        # set input names
         self.baseCol = self.nodeName + '.baseColor'
         self.metal = self.nodeName + '.metalness'
         self.rough = self.nodeName + '.specularRoughness'
         self.normal = self.nodeName + '.normalCamera'
 
-    def createVrayPBRShader(self):
-        pass
-        # TODO name of vray pbr shader
-        # self.shader =
-
-    # smarter decision for engine specific types needed
-    def createRedshiftPBRShader(self):
-        self.shader = cmds.shadingNode(
-            'RedshiftMaterial', name=self.nodeName, asShader=True)
+        cmds.shadingNode('aiStandardSurface',
+                         name=self.nodeName, asShader=True)
 
     # TODO move connection to builder, only output connection name
-    def connDiff(self, inputConnection):
+    def connColor(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.baseCol, force=True)
 
@@ -281,6 +265,85 @@ class PBRShader(object):
 
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
+
+    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, debug: bool = False):
+        # create shading group
+        self.shadGrp = shadingGrp = ShadingGroup(
+            self.shadingGrpName, debug=debug)
+        self.shadingGrpName = shadingGrp.nodeName
+        # connect shading group
+        self.connColOut(shadingGrp.aiSurfaceShaderInput)
+        # create preview sphere
+        prevSphere = PrevSphere(
+            self.nodeName, 3, dispHeight=0.1)
+        # assign Shader
+        prevSphere.assignShader(self.nodeName)
+        prevSphere.moveOver(translateX, translateY, translateZ)
+
+    def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, triBlend: float = 0.5, triScale: float = 1.0):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectColor(tex.colorOut, self.baseCol)
+
+    def setupColor(self, texNodeName: str, texFilePath: str, texType: str):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        self.connColor(tex.colorOut)
+
+    def setupTripMetalness(self, texNodeName: str, texFilePath: str, texType: str, triBlend: float = 0.5, triScale: float = 1.0):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, self.metal)
+
+    def setupMetalness(self, texNodeName: str, texFilePath: str, texType: str):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        self.connColor(tex.redColorOut)
+
+    def setupTripRoughness(self, texNodeName: str, texFilePath: str, texType: str, triBlend: float = 0.5, triScale: float = 1.0):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, self.rough)
+
+    def setupMetalness(self, texNodeName: str, texFilePath: str, texType: str):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        self.connRough(tex.redColorOut)
+
+    def setupTripNormal(self, texNodeName: str, texFilePath: str, texType: str, triBlend: float = 0.5, triScale: float = 1.0):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        normalMap = NormalMapNode(texNodeName)
+        triplanar.connectColor(tex.colorOut, normalMap.dataIn)
+        self.connNormal(normalMap.normalOut)
+
+    def setupNormal(self, texNodeName: str, texFilePath: str, texType: str):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        normalMap = NormalMapNode(texNodeName)
+        normalMap.connect(tex.colorOut, self.normal)
+
+    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, triBlend: float = 0.5, triScale: float = 1.0):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        dispNode = DisplacementNode(texNodeName, scale=1.0)
+        triplanar = TriPlanarNode(texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, dispNode.dispIn)
+        cmds.connectAttr(dispNode.dispOut, self.shadGrp.displacementShaderIn)
+
+    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, debug=True)
+        dispNode = DisplacementNode(texNodeName, scale=1.0)
+        dispNode.connect(tex.redColorOut, self.shadGrp.displacementShaderIn)
 
 
 class ShadingGroup(object):
@@ -300,8 +363,8 @@ class ShadingGroup(object):
 
 class PrevSphere(object):
     def __init__(self, nodeName: str = 'Preview_Sphere_geo', smoothSteps: int = 2, dispSubdivs: int = 3, tesselation: bool = True, dispHeight: float = 1.0) -> None:
-        self.nodeName = nodeName
-        self.shapeNodeName = nodeName + 'Shape'
+        self.nodeName = nodeName + '_previewSphere_geo'
+        self.shapeNodeName = self.nodeName + 'Shape'
         self.smoothSteps = smoothSteps
         self.dispSubdivs = dispSubdivs
         self.tess = tesselation
@@ -349,8 +412,7 @@ if __name__ == '__main__':
     # dispMapNode = DisplacementNode()
     # dispMapNode.connect(dispFileNode.colorOut())
     #
-    newShader = PBRShader(os.path.split(os.path.split(diffPath)[0])[1])
-    newShader.createArnoldPBRShader()
+    newShader = arnoldPBRShader(os.path.split(os.path.split(diffPath)[0])[1])
     newDiffTex = FileNode('diffuse', diffPath, texType='color', debug=True)
     newMetalTex = FileNode('metal', metalPath, texType='metal', debug=True)
     newRoughTex = FileNode('roughness', roughPath,
