@@ -1,6 +1,4 @@
 # AutoMat
-
-## What is it?
 AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically from a selected textures folder.
 
 ## Why do I need it?
