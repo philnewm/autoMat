@@ -235,16 +235,17 @@ class DisplacementNode(object):
 class arnoldPBRShader(object):
     def __init__(self, nodeName: str = 'PBRShader', debug: bool = False) -> None:
         self.nodeName = nodeName
+        self.shadNodeName = nodeName + '_AutoMatShader'
         self.shadingGrpName = nodeName + '_shaGrp'
         self.shadGrp = None
-        self.colorOut = nodeName + '.outColor'
-        self.baseCol = self.nodeName + '.baseColor'
-        self.metal = self.nodeName + '.metalness'
-        self.rough = self.nodeName + '.specularRoughness'
-        self.normal = self.nodeName + '.normalCamera'
+        self.colorOut = self.shadNodeName + '.outColor'
+        self.baseCol = self.shadNodeName + '.baseColor'
+        self.metal = self.shadNodeName + '.metalness'
+        self.rough = self.shadNodeName + '.specularRoughness'
+        self.normal = self.shadNodeName + '.normalCamera'
 
         cmds.shadingNode('aiStandardSurface',
-                         name=self.nodeName, asShader=True)
+                         name=self.shadNodeName, asShader=True)
 
     # Methods to connect textures to shader channels
     def connColor(self, inputConnection):
@@ -266,12 +267,13 @@ class arnoldPBRShader(object):
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
 
-    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, debug: bool = False):
+    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, grpName: str = 'Preview_Spheres_grp', debug: bool = False):
 
         # create shading group
         self.shadGrp = ShadingGroup(
             self.shadingGrpName, debug=debug)
         self.shadingGrpName = self.shadGrp.nodeName
+        self.grpName = grpName
 
         # connect shading group
         self.connColOut(self.shadGrp.aiSurfaceShaderInput)
@@ -281,8 +283,11 @@ class arnoldPBRShader(object):
         # create preview sphere
         prevSphere = PrevSphere(
             self.nodeName, 3, dispHeight=0.1)
+        # TODO group all preview spheres together
+        cmds.parent(prevSphere.nodeName, self.grpName)
+
         # assign Shader
-        prevSphere.assignShader(self.nodeName)
+        prevSphere.assignShader(self.shadNodeName)
         prevSphere.moveOver(translateX, translateY, translateZ)
 
     def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
@@ -462,49 +467,3 @@ class PrevSphere(object):
 
     def moveOver(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         cmds.move(x, y, z, self.nodeName)
-
-
-# test code
-if __name__ == '__main__':
-    diffPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
-    metalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_metalness.jpg"
-    roughPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
-    normalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_normal.jpg"
-    dispPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_height.jpg"
-
-    # this ones nice
-    # dispFileNode = FileNode(path, debug=1)
-    # dispMapNode = DisplacementNode()
-    # dispMapNode.connect(dispFileNode.colorOut())
-    #
-    newShader = arnoldPBRShader(os.path.split(os.path.split(diffPath)[0])[1])
-    newDiffTex = FileNode('diffuse', diffPath, texType='color', debug=True)
-    newMetalTex = FileNode('metal', metalPath, texType='metal', debug=True)
-    newRoughTex = FileNode('roughness', roughPath,
-                           texType='roughness', debug=True)
-    newNormalTex = FileNode('normal', normalPath, texType='normal', debug=True)
-    newNormaMap = NormalMapNode(debug=True)
-    newDispTex = FileNode('displacement', dispPath,
-                          texType='displacement', debug=True)
-
-    triPlanarScale = 0.4
-    triPlanarBlend = 0
-
-    DiffTriplanar = TriPlanarNode('tri_01', triPlanarScale, triPlanarScale)
-    DiffTriplanar.connectColor(newDiffTex.colorOut, newShader.baseCol)
-    MetalTriplanar = TriPlanarNode('tri_02', triPlanarScale, triPlanarScale)
-    MetalTriplanar.connectData(newMetalTex.colorOut, newShader.metal)
-    RoughTriplanar = TriPlanarNode('tri_03', triPlanarScale, triPlanarScale)
-    RoughTriplanar.connectData(newRoughTex.colorOut, newShader.rough)
-    NormalTriplanar = TriPlanarNode('tri_04', triPlanarScale, triPlanarScale)
-    NormalTriplanar.connectColor(newNormalTex.colorOut, newNormaMap.dataIn)
-    newDispShader = DisplacementNode(debug=True)
-    DispTriplanar = TriPlanarNode('tri_05', triPlanarScale, triPlanarScale)
-    DispTriplanar.connectData(newDispTex.colorOut, newDispShader.dispIn)
-    newNormaMap.connectOut(newShader.normal)
-    newShadingGrp = ShadingGroup('preview_grp')
-    cmds.connectAttr(newShader.colorOut, newShadingGrp.aiSurfaceShaderInput)
-    newDispShader.connectOut(newShadingGrp.displacementShaderIn)
-
-    newPrevSphere = PrevSphere('Preview_Sphere_geo', dispHeight=0.1)
-    newPrevSphere.assignShader(newShader.nodeName)

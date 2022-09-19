@@ -2,9 +2,13 @@ from imp import reload
 from maya import cmds
 import maya.mel as mel
 from math import sqrt
-import nodes
 import os
-reload(nodes)
+import nodes
+# from autoMat.src import nodes
+import ui
+# from autoMat.src import ui
+reload(ui)  # TODO remove later only for WIP with maya
+reload(nodes)   # TODO remove later only for WIP with maya
 
 
 class autoMat(object):
@@ -24,6 +28,9 @@ class autoMat(object):
         self.dataDict = {}
         self.triPlanar = triPlanar
         self.csDefaults = ("sRGB", "Raw")
+        self.grpName = "Preview_Spheres_grp"
+        if not cmds.objExists(self.grpName):
+            cmds.group(empty=True, name=self.grpName)
 
         self.texTypes = {'color': ('diff', 'albedo', 'color', 'rgb'),
                          'metalness': ('met', ),
@@ -47,6 +54,16 @@ class autoMat(object):
             showInVP (bool, optional): Set if materials should be visible in maya viewport or not. Defaults to True.
         """
         self.cleanUp()
+        # delete empty groups
+        transforms = cmds.ls(type='transform')
+        deleteList = []
+        for tran in transforms:
+            if cmds.nodeType(tran) == 'transform':
+                children = cmds.listRelatives(tran, c=True)
+            if children == None:
+                deleteList.append(tran)
+
+        cmds.delete(deleteList)
 
         # TODO move values to UI
         moveStep = 0
@@ -58,12 +75,15 @@ class autoMat(object):
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
+            # TODO add _shader to shader
             newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
             # assign to preview mesh
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
-                                     (moveStep // columns) * 2, showInVP, debug=True)
+                                     (moveStep // columns) * 2, showInVP, self.grpName,  debug=True)
             moveStep += 1
+
+            # TODO add try except clauses if something fails
 
             for v in value:
                 texNodeName, texFilePath, texType = self.extractData(key, v)
@@ -104,6 +124,7 @@ class autoMat(object):
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
+            # TODO check if objects with name already and exist and add number
             newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
             # assign to preview mesh
@@ -191,12 +212,20 @@ class autoMat(object):
             raise ("choosen path does not exist")
 
         for path, directories, files in os.walk(self.dataPath):
-            if files:
+
+            # ignore directories starting with '.' (.mayaSwatches, .vrayThumbs)
+            if files and not os.path.split(path)[1].startswith('.'):
+
                 texList = []
                 for file in files:
-                    # exclude .tx files from reading
+
+                    # exclude .tx files from beeign read
                     if file.endswith('.tx'):
                         continue
-                    texList.append(file)
+                    # exclude hidden files from beeing read
+                    elif file.startswith('.'):
+                        continue
+                    else:
+                        texList.append(file)
 
                 self.dataDict[path] = texList

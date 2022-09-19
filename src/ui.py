@@ -1,7 +1,7 @@
-from main import autoMat
 from importlib import reload
 from PySide2 import QtWidgets, QtCore, QtGui  # TODO change to Qt later
 import main
+# from autoMat.src import main
 reload(main)  # TODO remove later only for WIP with maya
 
 
@@ -15,7 +15,7 @@ class AutoMatUI(QtWidgets.QDialog):
         self.setWindowTitle('AutoMat')
 
         # TODO setup window size relativ to screen size
-        self.autoMat = autoMat()
+        self.autoMat = main.autoMat()
         self.buildUI()
         self.populate()
         self.triplanar = False
@@ -188,4 +188,4 @@ def showUI():
     return ui
 
 
-ui = showUI()
+ui = showUI()  # TODO remove, call from shelf
