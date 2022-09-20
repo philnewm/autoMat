@@ -29,6 +29,9 @@ class autoMat(object):
         self.triPlanar = triPlanar
         self.csDefaults = ("sRGB", "Raw")
         self.grpName = "Preview_Spheres_grp"
+
+        self.removeEmptyGroups()
+
         if not cmds.objExists(self.grpName):
             cmds.group(empty=True, name=self.grpName)
 
@@ -54,16 +57,6 @@ class autoMat(object):
             showInVP (bool, optional): Set if materials should be visible in maya viewport or not. Defaults to True.
         """
         self.cleanUp()
-        # delete empty groups
-        transforms = cmds.ls(type='transform')
-        deleteList = []
-        for tran in transforms:
-            if cmds.nodeType(tran) == 'transform':
-                children = cmds.listRelatives(tran, c=True)
-            if children == None:
-                deleteList.append(tran)
-
-        cmds.delete(deleteList)
 
         # TODO move values to UI
         moveStep = 0
@@ -75,8 +68,10 @@ class autoMat(object):
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
-            # TODO add _shader to shader
+
             newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
+
+            # displacementFileType
 
             # assign to preview mesh
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
@@ -86,7 +81,8 @@ class autoMat(object):
             # TODO add try except clauses if something fails
 
             for v in value:
-                texNodeName, texFilePath, texType = self.extractData(key, v)
+                texNodeName, texFilePath, texType, texFileType = self.extractData(
+                    key, v)
 
                 if texType == 'color':
                     newShader.setupTripColor(
@@ -105,8 +101,30 @@ class autoMat(object):
                         texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
 
                 if texType == 'displacement':
+                    # adjust zero scale if neccessary
+                    if texFileType == 'exr':
+                        zeroScaleValue = 0.0
+                    else:
+                        zeroScaleValue = 0.5
+
                     newShader.setupTripDisplacement(
-                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale, zeroScaleValue)
+
+        # cmds.hyperShade(clearWorkArea=True)
+
+    def removeEmptyGroups(self):
+        # delete empty groups
+        transforms = cmds.ls(type='transform')
+        deleteList = []
+        for tran in transforms:
+            if cmds.nodeType(tran) == 'transform':
+                children = cmds.listRelatives(tran, c=True)
+            if children == None:
+                deleteList.append(tran)
+
+        cmds.delete(deleteList)
+
+    # TODO clean hypershade after creation
 
     # TODO find cleaner way to implement multiple materials setups
     def setupMaterial(self, showInVP=True):
@@ -133,7 +151,8 @@ class autoMat(object):
             moveStep += 1
 
             for v in value:
-                texNodeName, texFilePath, texType = self.extractData(key, v)
+                texNodeName, texFilePath, texType, texFileType = self.extractData(
+                    key, v)
 
                 if texType == 'color':
                     newShader.setupColor(
@@ -152,13 +171,21 @@ class autoMat(object):
                         texNodeName, texFilePath, texType, self.csDefaults)
 
                 elif texType == 'displacement':
+                    # adjust zero scale if neccessary
+                    print(texFileType)
+                    if texFileType == 'exr':
+                        zeroScaleValue = 0.0
+                    else:
+                        zeroScaleValue = 0.5
+
                     newShader.setupDisplacement(
-                        texNodeName, texFilePath, texType, self.csDefaults)
+                        texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue)
+
+        # cmds.hyperShade(clearWorkArea=True)
 
     def extractData(self, key, v):
         """
         This function extracts the texture node name, filepath and texture type from a dictionary.
-
         Args:
             key (_type_): directory path where texture where found
             v (_type_): texture file
@@ -167,9 +194,10 @@ class autoMat(object):
             _type_: _description_
         """
         texNodeName = v.split('.')[0]
+        texFileType = v.split('.')[1]
         texFilePath = os.path.join(key, v)
         texType = self.getType(texNodeName)
-        return texNodeName, texFilePath, texType
+        return texNodeName, texFilePath, texType, texFileType
 
     def cleanUp(self):
         """

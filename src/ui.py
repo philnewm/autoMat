@@ -122,6 +122,7 @@ class AutoMatUI(QtWidgets.QDialog):
         This Opens a fie dialog and assigns the selected directory to the path to the autoMats instance dataPath variable
         """
         dialog = QtWidgets.QFileDialog(self)
+        dialog.setDirectory(self.autoMat.dataPath)
         dialog.setWindowTitle('Choose texture folder')
         dialog.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, True)
         dialog.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)

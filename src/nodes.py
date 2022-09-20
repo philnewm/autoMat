@@ -235,6 +235,7 @@ class DisplacementNode(object):
 class arnoldPBRShader(object):
     def __init__(self, nodeName: str = 'PBRShader', debug: bool = False) -> None:
         self.nodeName = nodeName
+        self.geoName = nodeName + '_previewSphere_geo'
         self.shadNodeName = nodeName + '_AutoMatShader'
         self.shadingGrpName = nodeName + '_shaGrp'
         self.shadGrp = None
@@ -267,7 +268,7 @@ class arnoldPBRShader(object):
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
 
-    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, grpName: str = 'Preview_Spheres_grp', debug: bool = False):
+    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, scaleZeroValue: float = 0.0, dispInVP=True, grpName: str = 'Preview_Spheres_grp', debug: bool = False):
 
         # create shading group
         self.shadGrp = ShadingGroup(
@@ -281,14 +282,15 @@ class arnoldPBRShader(object):
             self.connColOut(self.shadGrp.surfaceShaderInput)
 
         # create preview sphere
-        prevSphere = PrevSphere(
-            self.nodeName, 3, dispHeight=0.1)
+        self.prevSphere = PrevSphere(
+            self.geoName, 3, dispHeight=0.1)
+
         # TODO group all preview spheres together
-        cmds.parent(prevSphere.nodeName, self.grpName)
+        cmds.parent(self.prevSphere.nodeName, self.grpName)
 
         # assign Shader
-        prevSphere.assignShader(self.shadNodeName)
-        prevSphere.moveOver(translateX, translateY, translateZ)
+        self.prevSphere.assignShader(self.shadNodeName)
+        self.prevSphere.moveOver(translateX, translateY, translateZ)
 
     def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
         """
@@ -386,7 +388,7 @@ class arnoldPBRShader(object):
         normalMap = NormalMapNode(texNodeName)
         normalMap.connect(tex.colorOut, self.normal)
 
-    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0, zeroScaleValue: float = 0.0):
         """
         Sets up nodes to triplanar project the displacement texture
 
@@ -404,12 +406,16 @@ class arnoldPBRShader(object):
         triplanar = TriPlanarNode(texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, dispNode.dispIn)
         cmds.connectAttr(dispNode.dispOut, self.shadGrp.displacementShaderIn)
+        cmds.setAttr(dispNode + '.aiDisplacementZeroValue', zeroScaleValue)
 
-    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, zeroScaleValue: float = 0.0):
         tex = FileNode(texNodeName, texFilePath,
                        texType, csDefaults, debug=True)
+
         dispNode = DisplacementNode(texNodeName, scale=1.0)
         dispNode.connect(tex.redColorOut, self.shadGrp.displacementShaderIn)
+        cmds.setAttr(dispNode.nodeName +
+                     '.aiDisplacementZeroValue', zeroScaleValue)
 
 
 class ShadingGroup(object):
@@ -433,13 +439,13 @@ class PrevSphere(object):
     """
 
     def __init__(self, nodeName: str = 'Preview_Sphere_geo', smoothSteps: int = 2, dispSubdivs: int = 3, tesselation: bool = True, dispHeight: float = 1.0) -> None:
-        self.nodeName = nodeName + '_previewSphere_geo'
+        self.nodeName = nodeName
         self.shapeNodeName = self.nodeName + 'Shape'
         self.smoothSteps = smoothSteps
         self.dispSubdivs = dispSubdivs
         self.tess = tesselation
         self.dispHeight = dispHeight
-        self.dispPadding = 0.8 * dispHeight
+        self.dispPadding = 0.8 * dispHeight  # TODO get rid of hardcoded multiplier
 
         # defaults
         self.createNode()
