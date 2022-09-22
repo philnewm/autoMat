@@ -29,6 +29,9 @@ class autoMat(object):
         self.triPlanar = triPlanar
         self.csDefaults = ("sRGB", "Raw")
         self.grpName = "Preview_Spheres_grp"
+        self.curTexType = 'default'
+        self.prevTexType = 'prevDefault'
+        self.texTypeList = []
 
         self.removeEmptyGroups()
 
@@ -65,6 +68,9 @@ class autoMat(object):
         triBlend = 1.0
         columns = round(sqrt(len(self.dataDict.keys())))
 
+        if not cmds.objExists(self.grpName):
+            cmds.group(empty=True, name=self.grpName)
+
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
@@ -88,19 +94,19 @@ class autoMat(object):
                     newShader.setupTripColor(
                         texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
 
-                if texType == 'metalness':
+                elif texType == 'metalness':
                     newShader.setupTripMetalness(
                         texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
 
-                if texType == 'roughness':
+                elif texType == 'roughness':
                     newShader.setupTripRoughness(
                         texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
 
-                if texType == 'normal':
+                elif texType == 'normal':
                     newShader.setupTripNormal(
                         texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
 
-                if texType == 'displacement':
+                elif texType == 'displacement':
                     # adjust zero scale if neccessary
                     if texFileType == 'exr':
                         zeroScaleValue = 0.0
@@ -135,14 +141,16 @@ class autoMat(object):
             showInVP (bool, optional): Set if materials should be visible in maya viewport or not. Defaults to True.
         """
         self.cleanUp()
-
         moveStep = 0
         columns = round(sqrt(len(self.dataDict.keys())))
 
+        if not cmds.objExists(self.grpName):
+            cmds.group(empty=True, name=self.grpName)
+
         for key, value in self.dataDict.items():
+            self.texTypeList.clear()
             # setup shader
             shaderNodeName = os.path.split(key)[1]
-            # TODO check if objects with name already and exist and add number
             newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
             # assign to preview mesh
@@ -154,32 +162,54 @@ class autoMat(object):
                 texNodeName, texFilePath, texType, texFileType = self.extractData(
                     key, v)
 
+                self.prevTexType = self.curTexType
+                self.curTexType = texType
+
                 if texType == 'color':
-                    newShader.setupColor(
-                        texNodeName, texFilePath, texType, self.csDefaults)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        newShader.setupColor(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
 
                 elif texType == 'metalness':
-                    newShader.setupMetalness(
-                        texNodeName, texFilePath, texType, self.csDefaults)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        newShader.setupMetalness(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
 
                 elif texType == 'roughness':
-                    newShader.setupRoughness(
-                        texNodeName, texFilePath, texType, self.csDefaults)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        newShader.setupRoughness(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
 
                 elif texType == 'normal':
-                    newShader.setupNormal(
-                        texNodeName, texFilePath, texType, self.csDefaults)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        newShader.setupNormal(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
 
                 elif texType == 'displacement':
                     # adjust zero scale if neccessary
-                    print(texFileType)
                     if texFileType == 'exr':
                         zeroScaleValue = 0.0
                     else:
                         zeroScaleValue = 0.5
 
-                    newShader.setupDisplacement(
-                        texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        newShader.setupDisplacement(
+                            texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue)
+                        self.texTypeList.append(texType)
 
         # cmds.hyperShade(clearWorkArea=True)
 
@@ -221,7 +251,7 @@ class autoMat(object):
             _type_: Texture type
         """
         # TODO check image for color or grayscale
-        # TODO ask user for recognized pattern
+        # TODO ask user for recognized naming pattern
         for keys, values in self.texTypes.items():
             for val in values:
                 if val in name.lower():
@@ -246,7 +276,6 @@ class autoMat(object):
 
                 texList = []
                 for file in files:
-
                     # exclude .tx files from beeign read
                     if file.endswith('.tx'):
                         continue

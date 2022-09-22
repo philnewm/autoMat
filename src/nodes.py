@@ -1,6 +1,6 @@
-from distutils.log import debug
 from maya import cmds
 import os
+import re
 
 
 class FileNode(object):
@@ -8,7 +8,7 @@ class FileNode(object):
             "Input - Generic - sRGB - Texture", "Utility - Raw"), renderEngine: str = 'arnold', enableAutoTX: bool = True, debug: bool = False) -> None:
         self.nodeName = nodeName
         self.filePath = imagePath
-        # TODO change for maya default aces
+        self.udim = re.search(r'\d\d\d\d', os.path.split(imagePath)[1])
         self.col_cs, self.util_cs = csDefaults
         self.colorSpace = None
         self.renderEngine = renderEngine
@@ -19,6 +19,7 @@ class FileNode(object):
 
         self.colorOut = self.nodeName + '.outColor'
         self.redColorOut = self.nodeName + '.outColor.outColorR'
+
         if texType:
             self.createNode()
             self.loadImage()
@@ -44,6 +45,17 @@ class FileNode(object):
 
     def loadImage(self):
         # import image
+        if self.udim:
+            udim_sequence = self.udim.group(0)
+            udim_sequence = self.filePath.replace(udim_sequence, '<udim>')
+
+            cmds.setAttr(self.nodeName + '.filename',
+                         udim_sequence, type='string')
+            if self.debug:
+                print(
+                    f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
+            return
+
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
         cmds.setAttr(self.nodeName + '.autoTx', self.enableAutoTX)
@@ -54,7 +66,7 @@ class FileNode(object):
         # TODO option for udims
 
     def setColorSpace(self):
-        if self.texType == 'color':  # TODO remove double if
+        if self.texType == 'color':
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.col_cs, type='string')
             self.colorSpace = self.col_cs
@@ -168,7 +180,6 @@ class NormalMapNode(object):
     def setStrength(self):
         pass
 
-    # TODO move connection to builder, only output connection name
     def connect(self, input, output):
         cmds.connectAttr(input, self.dataIn, force=True)
         cmds.connectAttr(self.normalOut, output, force=True)
@@ -244,6 +255,7 @@ class arnoldPBRShader(object):
         self.metal = self.shadNodeName + '.metalness'
         self.rough = self.shadNodeName + '.specularRoughness'
         self.normal = self.shadNodeName + '.normalCamera'
+        self.udimFlag = False
 
         cmds.shadingNode('aiStandardSurface',
                          name=self.shadNodeName, asShader=True)
@@ -285,14 +297,14 @@ class arnoldPBRShader(object):
         self.prevSphere = PrevSphere(
             self.geoName, 3, dispHeight=0.1)
 
-        # TODO group all preview spheres together
+        # group all preview spheres together
         cmds.parent(self.prevSphere.nodeName, self.grpName)
 
         # assign Shader
         self.prevSphere.assignShader(self.shadNodeName)
         self.prevSphere.moveOver(translateX, translateY, translateZ)
 
-    def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+    def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, udim, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
         """
         Sets up nodes to triplanar project the diffuse texture
 
@@ -306,7 +318,7 @@ class arnoldPBRShader(object):
         """
 
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, udim, csDefaults, debug=True)
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectColor(tex.colorOut, self.baseCol)
