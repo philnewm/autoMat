@@ -1,4 +1,5 @@
 from maya import cmds
+from maya import mel
 import os
 import re
 
@@ -63,7 +64,6 @@ class FileNode(object):
         if self.debug:
             print(
                 f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
-        # TODO option for udims
 
     def setColorSpace(self):
         if self.texType == 'color':
@@ -280,7 +280,7 @@ class arnoldPBRShader(object):
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
 
-    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, scaleZeroValue: float = 0.0, dispInVP=True, grpName: str = 'Preview_Spheres_grp', debug: bool = False):
+    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, orgSphere: list = [], grpName: str = 'Preview_Spheres_grp', debug: bool = False):
 
         # create shading group
         self.shadGrp = ShadingGroup(
@@ -292,19 +292,32 @@ class arnoldPBRShader(object):
         self.connColOut(self.shadGrp.aiSurfaceShaderInput)
         if dispInVP:
             self.connColOut(self.shadGrp.surfaceShaderInput)
-
+        print(f"REACHED HERE")
         # create preview sphere
+        # try:
         self.prevSphere = PrevSphere(
-            self.geoName, 3, dispHeight=0.1)
+            self.geoName, 3, dispHeight=0.05)
 
-        # group all preview spheres together
-        cmds.parent(self.prevSphere.nodeName, self.grpName)
+        # check if already one created
+        if orgSphere:
+            print('LIST FOUND')
+            print(
+                f"OBJECT TO DUPLICATE: {orgSphere}")
+            self.prevSphere.duplicate(orgSphere)
+        else:
+            self.prevSphere.createNodeWithUdims()
+            self.prevSphere.setupDisplacement()
+            # group all preview spheres together
+            cmds.parent(self.geoName, self.grpName)
+
+        self.prevSphere.moveOver(translateX, translateY, translateZ)
+        # except:
+        #    print(f"ERROR: failed to create instance for {self.geoName}")
 
         # assign Shader
         self.prevSphere.assignShader(self.shadNodeName)
-        self.prevSphere.moveOver(translateX, translateY, translateZ)
 
-    def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, udim, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+    def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
         """
         Sets up nodes to triplanar project the diffuse texture
 
@@ -318,7 +331,7 @@ class arnoldPBRShader(object):
         """
 
         tex = FileNode(texNodeName, texFilePath,
-                       texType, udim, csDefaults, debug=True)
+                       texType, csDefaults, debug=True)
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectColor(tex.colorOut, self.baseCol)
@@ -449,9 +462,11 @@ class PrevSphere(object):
     """
     This class handles creating the preview sphere geometry and setting it all up for displacement
     """
+    # TODO take care of udim preview on sphreres - could use udim spheres for all
 
     def __init__(self, nodeName: str = 'Preview_Sphere_geo', smoothSteps: int = 2, dispSubdivs: int = 3, tesselation: bool = True, dispHeight: float = 1.0) -> None:
         self.nodeName = nodeName
+        self.sphere = 'preview_geo'
         self.shapeNodeName = self.nodeName + 'Shape'
         self.smoothSteps = smoothSteps
         self.dispSubdivs = dispSubdivs
@@ -459,13 +474,16 @@ class PrevSphere(object):
         self.dispHeight = dispHeight
         self.dispPadding = 0.8 * dispHeight  # TODO get rid of hardcoded multiplier
 
-        # defaults
-        self.createNode()
-        self.setupDisplacement()
-
-    def createNode(self):
+    def createNodeWithUdims(self):
         cmds.polyCube(name=self.nodeName)
+        cmds.polyMapCut(self.nodeName + '.e[:]', constructionHistory=True)
+        mel.eval('u3dLayout -res 4096 -rot 1 -scl 1 -rmn 0 -rmx 360 -rst 90 -spc 0.0078125 -mar 0.0078125 -u 6 -box 0 1 0 1 ' +
+                 self.nodeName + '.f[0:6];')
         cmds.polySmooth(self.nodeName, divisions=self.smoothSteps)
+
+    def duplicate(self, prevName):
+        cmds.duplicate(prevName)
+        cmds.rename(prevName + '1', self.nodeName)
 
     def setupDisplacement(self):
         cmds.setAttr(self.shapeNodeName + '.aiSubdivType', 1)

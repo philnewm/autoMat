@@ -1,4 +1,5 @@
 from imp import reload
+from traceback import print_tb
 from maya import cmds
 import maya.mel as mel
 from math import sqrt
@@ -29,9 +30,10 @@ class autoMat(object):
         self.triPlanar = triPlanar
         self.csDefaults = ("sRGB", "Raw")
         self.grpName = "Preview_Spheres_grp"
+        self.prevTexType = None
         self.curTexType = 'default'
-        self.prevTexType = 'prevDefault'
         self.texTypeList = []
+        self.orgSphere = None
 
         self.removeEmptyGroups()
 
@@ -71,18 +73,24 @@ class autoMat(object):
         if not cmds.objExists(self.grpName):
             cmds.group(empty=True, name=self.grpName)
 
+        self.orgSphere = None
+
         for key, value in self.dataDict.items():
             # setup shader
             shaderNodeName = os.path.split(key)[1]
-
             newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
             # displacementFileType
 
             # assign to preview mesh
-            newShader.assigntoSphere(-2 * (moveStep % columns), 0,
-                                     (moveStep // columns) * 2, showInVP, self.grpName,  debug=True)
+            try:
+                newShader.assigntoSphere(-2 * (moveStep % columns), 0,
+                                         (moveStep // columns) * 2, showInVP, self.orgSphere, debug=True)
+            except:
+                print(
+                    f"ERROR: failed to assign shader {shaderNodeName} to preview sphere {newShader.geoName}")
             moveStep += 1
+            self.orgSphere = newShader.geoName
 
             # TODO add try except clauses if something fails
 
@@ -90,21 +98,55 @@ class autoMat(object):
                 texNodeName, texFilePath, texType, texFileType = self.extractData(
                     key, v)
 
+                self.prevTexType = self.curTexType
+                self.curTexType = texType
+
                 if texType == 'color':
-                    newShader.setupTripColor(
-                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        try:
+                            newShader.setupTripColor(
+                                texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Basecolor nodes for {newShader.shadNodeName}")
 
                 elif texType == 'metalness':
-                    newShader.setupTripMetalness(
-                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
-
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        try:
+                            newShader.setupMetalness(
+                                texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Metalness nodes for {newShader.shadNodeName}")
                 elif texType == 'roughness':
-                    newShader.setupTripRoughness(
-                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        try:
+                            newShader.setupRoughness(
+                                texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
 
                 elif texType == 'normal':
-                    newShader.setupTripNormal(
-                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        try:
+                            newShader.setupNormal(
+                                texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create NormalMap nodes for {newShader.shadNodeName}")
 
                 elif texType == 'displacement':
                     # adjust zero scale if neccessary
@@ -113,8 +155,16 @@ class autoMat(object):
                     else:
                         zeroScaleValue = 0.5
 
-                    newShader.setupTripDisplacement(
-                        texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale, zeroScaleValue)
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        try:
+                            newShader.setupTripDisplacement(
+                                texNodeName, texFilePath, texType, self.csDefaults, triBlend, triScale, zeroScaleValue)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Displacement nodes for {newShader.shadNodeName}")
 
         # cmds.hyperShade(clearWorkArea=True)
 
@@ -129,8 +179,6 @@ class autoMat(object):
                 deleteList.append(tran)
 
         cmds.delete(deleteList)
-
-    # TODO clean hypershade after creation
 
     # TODO find cleaner way to implement multiple materials setups
     def setupMaterial(self, showInVP=True):
@@ -147,16 +195,26 @@ class autoMat(object):
         if not cmds.objExists(self.grpName):
             cmds.group(empty=True, name=self.grpName)
 
+        self.orgSphere = None
+
         for key, value in self.dataDict.items():
             self.texTypeList.clear()
-            # setup shader
-            shaderNodeName = os.path.split(key)[1]
-            newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
 
+            shaderNodeName = os.path.split(key)[1]
+            # setup shader
+            try:
+                newShader = nodes.arnoldPBRShader(shaderNodeName, debug=True)
+            except:
+                print(f"ERROR: failed to create shader {shaderNodeName}")
             # assign to preview mesh
-            newShader.assigntoSphere(-2 * (moveStep % columns), 0,
-                                     (moveStep // columns) * 2, showInVP, debug=True)
+            try:
+                newShader.assigntoSphere(-2 * (moveStep % columns), 0,
+                                         (moveStep // columns) * 2, showInVP, self.orgSphere, debug=True)
+            except:
+                print(
+                    f"ERROR: failed to assign shader {shaderNodeName} to preview sphere {newShader.geoName}")
             moveStep += 1
+            self.orgSphere = newShader.geoName
 
             for v in value:
                 texNodeName, texFilePath, texType, texFileType = self.extractData(
@@ -169,33 +227,48 @@ class autoMat(object):
                     if texType in self.texTypeList:
                         continue
                     else:
-                        newShader.setupColor(
-                            texNodeName, texFilePath, texType, self.csDefaults)
-                        self.texTypeList.append(texType)
+                        try:
+                            newShader.setupColor(
+                                texNodeName, texFilePath, texType, self.csDefaults)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Basecolor nodes for {newShader.shadNodeName}")
 
                 elif texType == 'metalness':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        newShader.setupMetalness(
-                            texNodeName, texFilePath, texType, self.csDefaults)
-                        self.texTypeList.append(texType)
-
+                        try:
+                            newShader.setupMetalness(
+                                texNodeName, texFilePath, texType, self.csDefaults)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Metalness nodes for {newShader.shadNodeName}")
                 elif texType == 'roughness':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        newShader.setupRoughness(
-                            texNodeName, texFilePath, texType, self.csDefaults)
-                        self.texTypeList.append(texType)
+                        try:
+                            newShader.setupRoughness(
+                                texNodeName, texFilePath, texType, self.csDefaults)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
 
                 elif texType == 'normal':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        newShader.setupNormal(
-                            texNodeName, texFilePath, texType, self.csDefaults)
-                        self.texTypeList.append(texType)
+                        try:
+                            newShader.setupNormal(
+                                texNodeName, texFilePath, texType, self.csDefaults)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create NormalMap nodes for {newShader.shadNodeName}")
 
                 elif texType == 'displacement':
                     # adjust zero scale if neccessary
@@ -207,11 +280,16 @@ class autoMat(object):
                     if texType in self.texTypeList:
                         continue
                     else:
-                        newShader.setupDisplacement(
-                            texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue)
-                        self.texTypeList.append(texType)
+                        try:
+                            newShader.setupDisplacement(
+                                texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue)
+                            self.texTypeList.append(texType)
+                        except:
+                            print(
+                                f"ERROR: failed to create Displacement nodes for {newShader.shadNodeName}")
 
-        # cmds.hyperShade(clearWorkArea=True)
+        # mel.eval('hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");') #renable when all working
+        print(self.orgSphere)
 
     def extractData(self, key, v):
         """
@@ -263,6 +341,8 @@ class autoMat(object):
         Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
         """
         self.dataDict.clear()
+        acceptedFilesList = ['bmp', 'ico', 'jpg',
+                             'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
 
         try:
             os.path.exists(self.dataPath)
@@ -276,13 +356,9 @@ class autoMat(object):
 
                 texList = []
                 for file in files:
-                    # exclude .tx files from beeign read
-                    if file.endswith('.tx'):
-                        continue
-                    # exclude hidden files from beeing read
-                    elif file.startswith('.'):
-                        continue
-                    else:
+                    # check name for predefined list of file types
+                    fileSplitList = file.split('.')
+                    if fileSplitList[len(fileSplitList) - 1] in acceptedFilesList:
                         texList.append(file)
 
                 self.dataDict[path] = texList
