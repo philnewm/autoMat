@@ -23,58 +23,152 @@ class AutoMatUI(QtWidgets.QDialog):
 
     def buildUI(self):
         """
-        Creates all GUI elemnts and links each signla to their respective Method
+        Creates all GUI elemnts and links each signal to their respective methods
         """
+        # main vertical UI layout
         layout = QtWidgets.QVBoxLayout(self)
 
+        # top UI bar as horizontal layout
+        self.loadNameField = QtWidgets.QLabel("Choose a Texture Folder")
+        self.loadNameField.setStyleSheet("font-size: 11pt")
+        self.loadNameField.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self.loadNameField)
+
+        # UI for reading folders
         loadWidget = QtWidgets.QWidget()
         loadLayout = QtWidgets.QHBoxLayout(loadWidget)
         layout.addWidget(loadWidget)
 
+        # reset button
+        resetBtn = QtWidgets.QPushButton('Reset List')
+        resetBtn.setStyleSheet("font-size: 11pt")
+        resetBtn.clicked.connect(self.clearList)
+        loadLayout.addWidget(resetBtn)
+
+        # input field
         self.loadNameField = QtWidgets.QLineEdit()
         self.loadNameField.insert('No texture folder selected')
         self.loadNameField.setStyleSheet("font-size: 11pt")
         self.loadNameField.textChanged.connect(self.updatePath)
         loadLayout.addWidget(self.loadNameField)
 
-        loadBtn = QtWidgets.QPushButton('select')
+        # select button
+        loadBtn = QtWidgets.QPushButton('Select')
         loadBtn.setStyleSheet("font-size: 11pt")
         loadBtn.clicked.connect(self.chooseDirectory)
         loadLayout.addWidget(loadBtn)
 
+        # list widget
         self.listWidget = QtWidgets.QListWidget()
         layout.addWidget(self.listWidget)
 
-        statusWidget = QtWidgets.QWidget()
-        statusLayout = QtWidgets.QHBoxLayout(statusWidget)
-        layout.addWidget(statusWidget)
+        # display options layout
+        displayOptionsWidget = QtWidgets.QWidget()
+        displayOptionsLayout = QtWidgets.QHBoxLayout(displayOptionsWidget)
+        layout.addWidget(displayOptionsWidget)
 
-        self.statusLabel = QtWidgets.QLabel()
-        statusLayout.addWidget(self.statusLabel)
-
-        optionWidget = QtWidgets.QWidget()
-        optionLayout = QtWidgets.QHBoxLayout(optionWidget)
-        layout.addWidget(optionWidget)
-
+        # display in viewport checkbox
         vpCompCheck = QtWidgets.QCheckBox("Display in Viewport")
         vpCompCheck.setChecked(True)
         vpCompCheck.setStyleSheet("font-size: 12pt")
         vpCompCheck.stateChanged.connect(self.dispVP)
-        optionLayout.addWidget(vpCompCheck)
+        displayOptionsLayout.addWidget(vpCompCheck)
 
-        triPlanarCheck = QtWidgets.QCheckBox(
-            "Triplanar (broken in viewport)")
-        triPlanarCheck.setStyleSheet("font-size: 12pt")
-        triPlanarCheck.stateChanged.connect(self.switchTriPlanar)
-        optionLayout.addWidget(triPlanarCheck)
-
+        # colorspace combobox
         self.csDropdown = QtWidgets.QComboBox()
-        self. csDropdown.addItem("Maya ACES")
+        self.csDropdown.addItem("Maya ACES")
         self.csDropdown.addItem("General ACES")
         self.csDropdown.setStyleSheet("font-size: 11pt")
         self.csDropdown.currentIndexChanged.connect(self.switchCS)
-        optionLayout.addWidget(self.csDropdown)
+        displayOptionsLayout.addWidget(self.csDropdown)
 
+        # shader details horizontal
+        shaderDetailsWidget = QtWidgets.QWidget()
+        shaderDetailsLayout = QtWidgets.QHBoxLayout(shaderDetailsWidget)
+        layout.addWidget(shaderDetailsWidget)
+
+        # displacement options vertical
+        dispOptionsWidget = QtWidgets.QWidget()
+        dispOptionsLayout = QtWidgets.QVBoxLayout(dispOptionsWidget)
+        shaderDetailsLayout.addWidget(dispOptionsWidget)
+
+        # vertical label fields for displacement
+        dispLabel = QtWidgets.QLabel("Displacement")
+        dispLabel.setStyleSheet("font-size: 12pt")
+        dispOptionsLayout.addWidget(dispLabel)
+
+        subdivLabel = QtWidgets.QLabel("Subdivisions")
+        subdivLabel.setStyleSheet("font-size: 11pt")
+        dispOptionsLayout.addWidget(subdivLabel)
+
+        heightLabel = QtWidgets.QLabel("Height")
+        heightLabel.setStyleSheet("font-size: 11pt")
+        dispOptionsLayout.addWidget(heightLabel)
+
+        # vertical edit fields for displacement
+        dispEditWidget = QtWidgets.QWidget()
+        dispEditLayout = QtWidgets.QVBoxLayout(dispEditWidget)
+        shaderDetailsLayout.addWidget(dispEditWidget)
+
+        dispPH = QtWidgets.QLabel()
+        dispPH.setStyleSheet("font-size: 12pt")
+        dispEditLayout.addWidget(dispPH)
+
+        self.subdivLineEdit = QtWidgets.QLineEdit()
+        self.subdivLineEdit.insert('3')
+        self.subdivLineEdit.setStyleSheet("font-size: 10pt")
+        self.subdivLineEdit.textChanged.connect(self.setDispSubdiv)
+        dispEditLayout.addWidget(self.subdivLineEdit)
+
+        self.heightLineEdit = QtWidgets.QLineEdit()
+        self.heightLineEdit.insert('0.05')
+        self.heightLineEdit.setStyleSheet("font-size: 10pt")
+        dispEditLayout.addWidget(self.heightLineEdit)
+
+        # triplanar options vertical
+        tripOptionsWidget = QtWidgets.QWidget()
+        tripOptionsLayout = QtWidgets.QVBoxLayout(tripOptionsWidget)
+        shaderDetailsLayout.addWidget(tripOptionsWidget)
+
+        # vertical label fields for triplanar
+        tripLabel = QtWidgets.QLabel("Triplanar")
+        tripLabel.setStyleSheet("font-size: 12pt")
+        tripOptionsLayout.addWidget(tripLabel)
+
+        scaleLabel = QtWidgets.QLabel("Scale")
+        scaleLabel.setStyleSheet("font-size: 11pt")
+        tripOptionsLayout.addWidget(scaleLabel)
+
+        blendLabel = QtWidgets.QLabel("Blend")
+        blendLabel.setStyleSheet("font-size: 11pt")
+        tripOptionsLayout.addWidget(blendLabel)
+
+        # vertical edit fields for triplanar
+        tripEditWidget = QtWidgets.QWidget()
+        tripEditLayout = QtWidgets.QVBoxLayout(tripEditWidget)
+        shaderDetailsLayout.addWidget(tripEditWidget)
+
+        enableCheck = QtWidgets.QCheckBox()
+        enableCheck.setStyleSheet("font-size: 12pt")
+        enableCheck.stateChanged.connect(self.switchTriPlanar)
+        tripEditLayout.addWidget(enableCheck)
+
+        # TODO disable if checkbox not ticked
+        self.scaleLineEdit = QtWidgets.QLineEdit()
+        self.scaleLineEdit.insert('0.65')
+        self.scaleLineEdit.setStyleSheet("font-size: 10pt")
+        self.scaleLineEdit.setEnabled(False)
+        self.scaleLineEdit.textChanged.connect(self.setTripScale)
+        tripEditLayout.addWidget(self.scaleLineEdit)
+
+        self.blendLineEdit = QtWidgets.QLineEdit()
+        self.blendLineEdit.insert('1.0')
+        self.blendLineEdit.setStyleSheet("font-size: 10pt")
+        self.blendLineEdit.setEnabled(False)
+        self.blendLineEdit.textChanged.connect(self.setTripBlend)
+        tripEditLayout.addWidget(self.blendLineEdit)
+
+        # horizontal button layout
         btnWidget = QtWidgets.QWidget()
         btnLayout = QtWidgets.QHBoxLayout(btnWidget)
         layout.addWidget(btnWidget)
@@ -84,15 +178,23 @@ class AutoMatUI(QtWidgets.QDialog):
         importBtn.clicked.connect(self.executeScript)
         btnLayout.addWidget(importBtn)
 
-        resetBtn = QtWidgets.QPushButton('Reset Files')
-        resetBtn.setStyleSheet("font-size: 11pt")
-        resetBtn.clicked.connect(self.clearList)
-        btnLayout.addWidget(resetBtn)
+        matResetBtn = QtWidgets.QPushButton('Remove Materials')
+        matResetBtn.setStyleSheet("font-size: 11pt")
+        matResetBtn.clicked.connect(self.resetMats)
+        btnLayout.addWidget(matResetBtn)
 
         closeBtn = QtWidgets.QPushButton('Close')
         closeBtn.setStyleSheet("font-size: 11pt")
         closeBtn.clicked.connect(self.close)
         btnLayout.addWidget(closeBtn)
+
+        # status label
+        statusWidget = QtWidgets.QWidget()
+        statusLayout = QtWidgets.QHBoxLayout(statusWidget)
+        layout.addWidget(statusWidget)
+
+        self.statusLabel = QtWidgets.QLabel()
+        statusLayout.addWidget(self.statusLabel)
 
     def populate(self):
         """
@@ -100,6 +202,7 @@ class AutoMatUI(QtWidgets.QDialog):
         """
         self.loadNameField.setText(self.autoMat.dataPath)
 
+        # add dictionary values to list widget
         self.listWidget.clear()
         for keys, values in self.autoMat.dataDict.items():
             self.listWidget.addItem(keys)
@@ -107,13 +210,14 @@ class AutoMatUI(QtWidgets.QDialog):
 
         self.listWidget.setStyleSheet("font-size: 11pt")
 
+        # TODO add more status notes
         folderCount = len(self.autoMat.dataDict.keys())
         if folderCount == 1:
             self.statusLabel.setText(
-                f"Found {folderCount} texture folder.")
+                f"Status:  Found {folderCount} texture folder.")
         else:
             self.statusLabel.setText(
-                f"Found {folderCount} texture folders.")
+                f"Status: Found {folderCount} texture folders.")
 
         self.statusLabel.setStyleSheet("font-size: 13pt")
 
@@ -135,14 +239,36 @@ class AutoMatUI(QtWidgets.QDialog):
         self.autoMat.findFiles()
         self.populate()
 
+    def setDispSubdiv(self):
+        self.autoMat.dispSubdivs = int(self.subdivLineEdit.text())
+
+    def setDisplacementHeight(self):
+        self.autoMat.dispHeight = float(self.heightLineEdit.text())
+
+    def setTripScale(self):
+        self.autoMat.triScale = float(self.scaleLineEdit.text())
+
+    def setTripBlend(self):
+        self.autoMat.triBlend = float(self.blendLineEdit.text())
+        print(self.autoMat.triBlend)
+
     def executeScript(self):
         """
         Start the pbr material setup method from autoMat
         """
         if self.triplanar:
+            self.setTripScale()
+            self.setTripBlend()
+            self.setDispSubdiv()
+            self.setDisplacementHeight()
             self.autoMat.setupMaterialTrip()
         else:
+            self.setDispSubdiv()
+            self.setDisplacementHeight()
             self.autoMat.setupMaterial(showInVP=self.showInVP)
+
+    def resetMats(self):
+        self.autoMat.cleanUp()
 
     def clearList(self):
         self.autoMat.dataDict.clear()
@@ -168,9 +294,13 @@ class AutoMatUI(QtWidgets.QDialog):
             state (_type_): assigns checkbox status
         """
         if state == QtCore.Qt.Checked:
+            self.scaleLineEdit.setEnabled(True)
+            self.blendLineEdit.setEnabled(True)
             self.triplanar = True
         else:
             self.triplanar = False
+            self.scaleLineEdit.setEnabled(False)
+            self.blendLineEdit.setEnabled(False)
 
     def switchCS(self):
         """

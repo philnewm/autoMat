@@ -280,7 +280,7 @@ class arnoldPBRShader(object):
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
 
-    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, orgSphere: list = [], grpName: str = 'Preview_Spheres_grp', debug: bool = False):
+    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, orgSphere: list = [], grpName: str = 'Preview_Spheres_grp', dispSubdivs: int = 3, dispHeight: float = 0.05, debug: bool = False):
 
         # create shading group
         self.shadGrp = ShadingGroup(
@@ -292,15 +292,13 @@ class arnoldPBRShader(object):
         self.connColOut(self.shadGrp.aiSurfaceShaderInput)
         if dispInVP:
             self.connColOut(self.shadGrp.surfaceShaderInput)
-        print(f"REACHED HERE")
         # create preview sphere
         # try:
         self.prevSphere = PrevSphere(
-            self.geoName, 3, dispHeight=0.05)
+            self.geoName, dispSubdivs, dispHeight=dispHeight)  # TODO control displacement values from shader
 
         # check if already one created
         if orgSphere:
-            print('LIST FOUND')
             print(
                 f"OBJECT TO DUPLICATE: {orgSphere}")
             self.prevSphere.duplicate(orgSphere)
@@ -413,7 +411,7 @@ class arnoldPBRShader(object):
         normalMap = NormalMapNode(texNodeName)
         normalMap.connect(tex.colorOut, self.normal)
 
-    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0, zeroScaleValue: float = 0.0):
+    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0, zeroScaleValue: float = 0.0, dispScale: float = 1.0):
         """
         Sets up nodes to triplanar project the displacement texture
 
@@ -427,17 +425,18 @@ class arnoldPBRShader(object):
         """
         tex = FileNode(texNodeName, texFilePath,
                        texType, csDefaults, debug=True)
-        dispNode = DisplacementNode(texNodeName, scale=1.0)
+        dispNode = DisplacementNode(texNodeName, scale=dispScale)
         triplanar = TriPlanarNode(texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, dispNode.dispIn)
         cmds.connectAttr(dispNode.dispOut, self.shadGrp.displacementShaderIn)
-        cmds.setAttr(dispNode + '.aiDisplacementZeroValue', zeroScaleValue)
+        cmds.setAttr(dispNode.nodeName +
+                     '.aiDisplacementZeroValue', zeroScaleValue)
 
-    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, zeroScaleValue: float = 0.0):
+    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, zeroScaleValue: float = 0.0, dispScale: float = 1.0):
         tex = FileNode(texNodeName, texFilePath,
                        texType, csDefaults, debug=True)
 
-        dispNode = DisplacementNode(texNodeName, scale=1.0)
+        dispNode = DisplacementNode(texNodeName, scale=dispScale)
         dispNode.connect(tex.redColorOut, self.shadGrp.displacementShaderIn)
         cmds.setAttr(dispNode.nodeName +
                      '.aiDisplacementZeroValue', zeroScaleValue)
