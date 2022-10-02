@@ -168,18 +168,6 @@ class autoMat(object):
             mel.eval(
                 'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
 
-    def removeEmptyGroups(self):
-        # delete empty groups
-        transforms = cmds.ls(type='transform')
-        deleteList = []
-        for tran in transforms:
-            if cmds.nodeType(tran) == 'transform':
-                children = cmds.listRelatives(tran, c=True)
-            if children == None:
-                deleteList.append(tran)
-
-        cmds.delete(deleteList)
-
     # TODO find cleaner way to implement multiple materials setups
     def setupMaterial(self, showInVP=True):
         """
@@ -294,6 +282,20 @@ class autoMat(object):
                 'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
         except (RuntimeError):
             print("hypershade panel not yet created")
+
+    def removeEmptyGroups(self):
+        # delete empty groups
+        transforms = cmds.ls(type='transform')
+        if transforms:
+            deleteList = []
+            for tran in transforms:
+                if cmds.nodeType(tran) == 'transform':
+                    children = cmds.listRelatives(tran, c=True)
+                    if children == None:
+                        deleteList.append(tran)
+
+            if deleteList:
+                cmds.delete(deleteList)
 
     def extractData(self, key, v):
         """
