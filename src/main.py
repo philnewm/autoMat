@@ -1,18 +1,17 @@
 from imp import reload
+from pickle import FALSE
 from maya import cmds
 import maya.mel as mel
 from math import sqrt
 import os
 import nodes
 # from autoMat.src import nodes
-import ui
 # from autoMat.src import ui
-reload(ui)  # TODO remove later only for WIP with maya
 reload(nodes)   # TODO remove later only for WIP with maya
 
 
 class autoMat(object):
-    def __init__(self, dataPath: str = 'sourceimages/', renderEngine: str = 'arnold', triPlanar: bool = False) -> None:
+    def __init__(self, dataPath: str = 'sourceimages/') -> None:
         """
         This class holds all neccessary functions and values to setup complete PBR materials using classes from nodes.py library.
 
@@ -22,11 +21,9 @@ class autoMat(object):
             triPlanar (bool, optional): wether to use triplanar mapping or not. Defaults to False.
         """
 
-        self.renderEngine = renderEngine
         self.projectDir = cmds.workspace(q=True, rootDirectory=True)
         self.dataPath = os.path.join(self.projectDir, dataPath)
         self.dataDict = {}
-        self.triPlanar = triPlanar
         self.csDefaults = ("sRGB", "Raw")
         self.grpName = "Preview_Spheres_grp"
         self.prevTexType = None
@@ -69,10 +66,7 @@ class autoMat(object):
             showInVP (bool, optional): Set if materials should be visible in maya viewport or not. Defaults to True.
         """
         self.cleanUp()
-
-        # TODO move values to UI
         moveStep = 0
-
         columns = round(sqrt(len(self.dataDict.keys())))
 
         if not cmds.objExists(self.grpName):
@@ -295,7 +289,11 @@ class autoMat(object):
                         #         f"ERROR: failed to create Displacement nodes for {newShader.shadNodeName}")
 
         # renable when all working
-        mel.eval('hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
+        try:
+            mel.eval(
+                'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
+        except (RuntimeError):
+            print("hypershade panel not yet created")
 
     def extractData(self, key, v):
         """

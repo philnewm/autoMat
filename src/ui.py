@@ -1,25 +1,83 @@
-from importlib import reload
+from maya import cmds
+from maya import OpenMayaUI as omui
+import logging
+import Qt
 from PySide2 import QtWidgets, QtCore, QtGui  # TODO change to Qt later
+from importlib import reload
 import main
 # from autoMat.src import main
 reload(main)  # TODO remove later only for WIP with maya
 
+logging.basicConfig()
+logger = logging.getLogger('AutoMat')
+logger.setLevel(logging.DEBUG)
 
-class AutoMatUI(QtWidgets.QDialog):
+if Qt.__binding__ == 'PySide':
+    from shiboken import wrapInstance
+    from Qt.QtCore import Signal
+    logger.debug('Using PySide with shiboken')
+elif Qt.__binding__.startswith('PyQt'):
+    from sip import wrapinstance as wrapInstance
+    from Qt.QtCore import pyqtSignal as Signal
+    logger.debug('Using Qt with sip')
+else:
+    from shiboken2 import wrapInstance
+    from Qt.QtCore import Signal
+    logger.debug('Using PySide2 with shiboken')
 
-    def __init__(self):
-        super(AutoMatUI, self).__init__()
+
+def getMayaMainWindow():
+    win = omui.MQtUtil_mainWindow()
+    ptr = wrapInstance(int(win), QtWidgets.QMainWindow)
+    return ptr
+
+
+def getDock(name: str = 'AutoMat'):
+    deleteDock()
+    ctrl = cmds.workspaceControl(name, label="AutoMat", vis=True)
+    qtCtrl = omui.MQtUtil.findControl(ctrl)
+    ptr = wrapInstance(int(qtCtrl), QtWidgets.QWidget)
+    return ptr
+
+
+def deleteDock(name: str = 'AutoMat'):
+    if cmds.workspaceControl(name, query=True, exists=True):
+        cmds.deleteUI(name)
+
+
+class AutoMatUI(QtWidgets.QWidget):
+
+    def __init__(self, dock: bool = False):
+        if dock:
+            parent = getDock()
+        else:
+            deleteDock()
+
+            try:
+                cmds.deleteUI('AutoMat')
+            except:
+                logger.debug('No previous UI exists')
+
+            parent = QtWidgets.QDialog(parent=getMayaMainWindow())
+            parent.setObjectName('AutoMat')
+            parent.setWindowTitle('AutoMat')
+            layout = QtWidgets.QVBoxLayout(parent)
+
+        super(AutoMatUI, self).__init__(parent=parent)
         """
         This class holds all necessary variables and methods to build, populate and update the UI. 
         """
-        self.setWindowTitle('AutoMat')
 
         # TODO setup window size relativ to screen size
         self.autoMat = main.autoMat()
-        self.buildUI()
-        self.populate()
         self.triplanar = False
         self.showInVP = True
+        self.buildUI()
+        self.populate()
+
+        self.parent().layout().addWidget(self)
+        if not dock:
+            parent.show()
 
     def buildUI(self):
         """
@@ -29,10 +87,10 @@ class AutoMatUI(QtWidgets.QDialog):
         layout = QtWidgets.QVBoxLayout(self)
 
         # top UI bar as horizontal layout
-        self.loadNameField = QtWidgets.QLabel("Choose a Texture Folder")
-        self.loadNameField.setStyleSheet("font-size: 11pt")
-        self.loadNameField.setAlignment(QtCore.Qt.AlignCenter)
-        layout.addWidget(self.loadNameField)
+        self.loadNameLabel = QtWidgets.QLabel("Choose a Texture Folder")
+        self.loadNameLabel.setStyleSheet("font-size: 11pt")
+        self.loadNameLabel.setAlignment(QtCore.Qt.AlignCenter)
+        layout.addWidget(self.loadNameLabel)
 
         # UI for reading folders
         loadWidget = QtWidgets.QWidget()
@@ -42,6 +100,7 @@ class AutoMatUI(QtWidgets.QDialog):
         # reset button
         resetBtn = QtWidgets.QPushButton('Reset List')
         resetBtn.setStyleSheet("font-size: 11pt")
+        resetBtn.setToolTip("Delete texture list")
         resetBtn.clicked.connect(self.clearList)
         loadLayout.addWidget(resetBtn)
 
@@ -49,17 +108,20 @@ class AutoMatUI(QtWidgets.QDialog):
         self.loadNameField = QtWidgets.QLineEdit()
         self.loadNameField.insert('No texture folder selected')
         self.loadNameField.setStyleSheet("font-size: 11pt")
+        self.loadNameField.setToolTip("Path to texture folder")
         self.loadNameField.textChanged.connect(self.updatePath)
         loadLayout.addWidget(self.loadNameField)
 
         # select button
         loadBtn = QtWidgets.QPushButton('Select')
         loadBtn.setStyleSheet("font-size: 11pt")
+        loadBtn.setToolTip("Open file dialog and choose folder")
         loadBtn.clicked.connect(self.chooseDirectory)
         loadLayout.addWidget(loadBtn)
 
         # list widget
         self.listWidget = QtWidgets.QListWidget()
+        self.listWidget.setToolTip("List of detected textures")
         layout.addWidget(self.listWidget)
 
         # display options layout
@@ -71,6 +133,8 @@ class AutoMatUI(QtWidgets.QDialog):
         vpCompCheck = QtWidgets.QCheckBox("Display in Viewport")
         vpCompCheck.setChecked(True)
         vpCompCheck.setStyleSheet("font-size: 12pt")
+        vpCompCheck.setToolTip(
+            "Setup materials to show viewport previews (Wont work with udims)")
         vpCompCheck.stateChanged.connect(self.dispVP)
         displayOptionsLayout.addWidget(vpCompCheck)
 
@@ -79,6 +143,7 @@ class AutoMatUI(QtWidgets.QDialog):
         self.csDropdown.addItem("Maya ACES")
         self.csDropdown.addItem("General ACES")
         self.csDropdown.setStyleSheet("font-size: 11pt")
+        self.csDropdown.setToolTip("Select a colorspace for image nodes")
         self.csDropdown.currentIndexChanged.connect(self.switchCS)
         displayOptionsLayout.addWidget(self.csDropdown)
 
@@ -95,14 +160,20 @@ class AutoMatUI(QtWidgets.QDialog):
         # vertical label fields for displacement
         dispLabel = QtWidgets.QLabel("Displacement")
         dispLabel.setStyleSheet("font-size: 12pt")
+        dispLabel.setToolTip(
+            "Displacement options in each objects shape node")
         dispOptionsLayout.addWidget(dispLabel)
 
         subdivLabel = QtWidgets.QLabel("Subdivisions")
         subdivLabel.setStyleSheet("font-size: 11pt")
+        subdivLabel.setToolTip(
+            "Number of subdivisions to use for displaced geometry")
         dispOptionsLayout.addWidget(subdivLabel)
 
         heightLabel = QtWidgets.QLabel("Height")
         heightLabel.setStyleSheet("font-size: 11pt")
+        heightLabel.setToolTip(
+            "Displacement strength, usualy pretty low values")
         dispOptionsLayout.addWidget(heightLabel)
 
         # vertical edit fields for displacement
@@ -110,8 +181,8 @@ class AutoMatUI(QtWidgets.QDialog):
         dispEditLayout = QtWidgets.QVBoxLayout(dispEditWidget)
         shaderDetailsLayout.addWidget(dispEditWidget)
 
-        dispPH = QtWidgets.QLabel()
-        dispPH.setStyleSheet("font-size: 12pt")
+        dispPH = QtWidgets.QLabel("")
+        dispPH.setStyleSheet("font-size: 13pt")
         dispEditLayout.addWidget(dispPH)
 
         self.subdivLineEdit = QtWidgets.QLineEdit()
@@ -133,14 +204,17 @@ class AutoMatUI(QtWidgets.QDialog):
         # vertical label fields for triplanar
         tripLabel = QtWidgets.QLabel("Triplanar")
         tripLabel.setStyleSheet("font-size: 12pt")
+        tripLabel.setToolTip("Use triplanar projection for each texture")
         tripOptionsLayout.addWidget(tripLabel)
 
         scaleLabel = QtWidgets.QLabel("Scale")
         scaleLabel.setStyleSheet("font-size: 11pt")
+        scaleLabel.setToolTip("Texture scale to project on geometry")
         tripOptionsLayout.addWidget(scaleLabel)
 
         blendLabel = QtWidgets.QLabel("Blend")
         blendLabel.setStyleSheet("font-size: 11pt")
+        blendLabel.setToolTip("Blend strength between projected textures")
         tripOptionsLayout.addWidget(blendLabel)
 
         # vertical edit fields for triplanar
@@ -149,11 +223,11 @@ class AutoMatUI(QtWidgets.QDialog):
         shaderDetailsLayout.addWidget(tripEditWidget)
 
         enableCheck = QtWidgets.QCheckBox()
-        enableCheck.setStyleSheet("font-size: 12pt")
+        enableCheck.setStyleSheet("font-size: 13pt")
         enableCheck.stateChanged.connect(self.switchTriPlanar)
         tripEditLayout.addWidget(enableCheck)
 
-        # TODO disable if checkbox not ticked
+        # disabled if checkbox not ticked
         self.scaleLineEdit = QtWidgets.QLineEdit()
         self.scaleLineEdit.insert('0.65')
         self.scaleLineEdit.setStyleSheet("font-size: 10pt")
@@ -175,16 +249,20 @@ class AutoMatUI(QtWidgets.QDialog):
 
         importBtn = QtWidgets.QPushButton('Setup Materials')
         importBtn.setStyleSheet("font-size: 11pt")
+        importBtn.setToolTip("Setup materials and assign to preview spheres")
         importBtn.clicked.connect(self.executeScript)
         btnLayout.addWidget(importBtn)
 
         matResetBtn = QtWidgets.QPushButton('Remove Materials')
         matResetBtn.setStyleSheet("font-size: 11pt")
+        matResetBtn.setToolTip(
+            "remove all created materials and their preview spheres")
         matResetBtn.clicked.connect(self.resetMats)
         btnLayout.addWidget(matResetBtn)
 
         closeBtn = QtWidgets.QPushButton('Close')
         closeBtn.setStyleSheet("font-size: 11pt")
+        closeBtn.setToolTip("Close UI Window")
         closeBtn.clicked.connect(self.close)
         btnLayout.addWidget(closeBtn)
 
@@ -281,10 +359,7 @@ class AutoMatUI(QtWidgets.QDialog):
         Args:
             state (_type_): assigns checkbox status
         """
-        if state == QtCore.Qt.Checked:
-            self.showInVP = True
-        else:
-            self.showInVP = False
+        self.showInVP = QtCore.Qt.Checked
 
     def switchTriPlanar(self, state):
         """
@@ -313,10 +388,4 @@ class AutoMatUI(QtWidgets.QDialog):
                 "Input - Generic - sRGB - Texture", "Utility - Raw")
 
 
-def showUI():
-    ui = AutoMatUI()
-    ui.show()
-    return ui
-
-
-ui = showUI()  # TODO remove, call from shelf
+AutoMatUI(dock=True)

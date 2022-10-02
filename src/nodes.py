@@ -65,7 +65,7 @@ class FileNode(object):
             print(
                 f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
-    def setColorSpace(self):
+    def setColorSpace(self):  # TODO add custom input method
         if self.texType == 'color':
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.col_cs, type='string')
@@ -295,7 +295,7 @@ class arnoldPBRShader(object):
         # create preview sphere
         # try:
         self.prevSphere = PrevSphere(
-            self.geoName, dispSubdivs, dispHeight=dispHeight)  # TODO control displacement values from shader
+            self.geoName, dispSubdivs, dispHeight=dispHeight)
 
         # check if already one created
         if orgSphere:

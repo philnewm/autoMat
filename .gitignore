@@ -130,3 +130,5 @@ dmypy.json
 
 *.dia~
 autoMatUML.dia.autosave
+src/.vscode/settings.json
+.vscode/settings.json
