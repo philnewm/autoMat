@@ -65,7 +65,7 @@ class AutoMatUI(QtWidgets.QWidget):
 
         super(AutoMatUI, self).__init__(parent=parent)
         """
-        This class holds all necessary variables and methods to build, populate and update the UI. 
+        This class holds all necessary variables and methods to build, populate and update the UI.
         """
 
         # TODO setup window size relativ to screen size
@@ -263,7 +263,7 @@ class AutoMatUI(QtWidgets.QWidget):
         closeBtn = QtWidgets.QPushButton('Close')
         closeBtn.setStyleSheet("font-size: 11pt")
         closeBtn.setToolTip("Close UI Window")
-        closeBtn.clicked.connect(self.close)
+        closeBtn.clicked.connect(self.closeUI)
         btnLayout.addWidget(closeBtn)
 
         # status label
@@ -386,6 +386,9 @@ class AutoMatUI(QtWidgets.QWidget):
         elif self.csDropdown.currentIndex() == 1:
             self.autoMat.csDefaults = (
                 "Input - Generic - sRGB - Texture", "Utility - Raw")
+
+    def closeUI(self):
+        cmds.deleteUI('AutoMat')
 
 
 AutoMatUI(dock=True)
