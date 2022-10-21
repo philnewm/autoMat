@@ -1,16 +1,16 @@
+import string
 from maya import cmds
 from maya import OpenMayaUI as omui
 import logging
 import Qt
-from PySide2 import QtWidgets, QtCore, QtGui  # TODO change to Qt later
+from Qt import QtWidgets, QtCore, QtGui
 from importlib import reload
-import main
-# from autoMat.src import main
+from autoMat.src import main
 reload(main)  # TODO remove later only for WIP with maya
 
 logging.basicConfig()
 logger = logging.getLogger('AutoMat')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 if Qt.__binding__ == 'PySide':
     from shiboken import wrapInstance
@@ -253,10 +253,11 @@ class AutoMatUI(QtWidgets.QWidget):
         importBtn.clicked.connect(self.executeScript)
         btnLayout.addWidget(importBtn)
 
-        matResetBtn = QtWidgets.QPushButton('Remove Materials')
+        # TODO button to hide spheres
+
+        matResetBtn = QtWidgets.QPushButton('Remove Spheres')
         matResetBtn.setStyleSheet("font-size: 11pt")
-        matResetBtn.setToolTip(
-            "remove all created materials and their preview spheres")
+        matResetBtn.setToolTip("remove all created preview spheres")
         matResetBtn.clicked.connect(self.resetMats)
         btnLayout.addWidget(matResetBtn)
 
@@ -270,7 +271,6 @@ class AutoMatUI(QtWidgets.QWidget):
         statusWidget = QtWidgets.QWidget()
         statusLayout = QtWidgets.QHBoxLayout(statusWidget)
         layout.addWidget(statusWidget)
-
         self.statusLabel = QtWidgets.QLabel()
         statusLayout.addWidget(self.statusLabel)
 
@@ -389,6 +389,3 @@ class AutoMatUI(QtWidgets.QWidget):
 
     def closeUI(self):
         cmds.deleteUI('AutoMat')
-
-
-AutoMatUI(dock=True)

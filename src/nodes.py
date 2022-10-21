@@ -1,12 +1,18 @@
+from importlib import reload
 from maya import cmds
 from maya import mel
 import os
 import re
+import logging
+
+logging.basicConfig()
+logger = logging.getLogger('AutoMat')
+logger.setLevel(logging.INFO)
 
 
 class FileNode(object):
     def __init__(self, nodeName: str, imagePath: str, texType: str, csDefaults: tuple = (
-            "Input - Generic - sRGB - Texture", "Utility - Raw"), renderEngine: str = 'arnold', enableAutoTX: bool = True, debug: bool = False) -> None:
+            "Input - Generic - sRGB - Texture", "Utility - Raw"), renderEngine: str = 'arnold', enableAutoTX: bool = True) -> None:
         self.nodeName = nodeName
         self.filePath = imagePath
         self.udim = re.search(r'\d\d\d\d', os.path.split(imagePath)[1])
@@ -16,7 +22,6 @@ class FileNode(object):
         self.texType = texType
         self.name = None
         self.enableAutoTX = enableAutoTX
-        self.debug = debug
 
         self.colorOut = self.nodeName + '.outColor'
         self.redColorOut = self.nodeName + '.outColor.outColorR'
@@ -38,10 +43,7 @@ class FileNode(object):
         else:
             self.imageNode = 'file'  # TODO check for correct naming
 
-        # maybe remove
-        if self.debug:
-            print(f"file node: {self.imageNode}")
-
+        logger.debug(f"file node: {self.imageNode}")
         return self.nodeName
 
     def loadImage(self):
@@ -52,18 +54,16 @@ class FileNode(object):
 
             cmds.setAttr(self.nodeName + '.filename',
                          udim_sequence, type='string')
-            if self.debug:
-                print(
-                    f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
+            logger.info(
+                f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
             return
 
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
         cmds.setAttr(self.nodeName + '.autoTx', self.enableAutoTX)
 
-        if self.debug:
-            print(
-                f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
+        logger.info(
+            f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
     def setColorSpace(self):  # TODO add custom input method
         if self.texType == 'color':
@@ -76,8 +76,7 @@ class FileNode(object):
             self.colorSpace = self.util_cs
 
         cmds.setAttr(self.nodeName + '.ignoreColorSpaceFileRules', 1)
-        if self.debug:
-            print(f"Texture Color conversion: {self.colorSpace}")
+        logger.debug(f"Texture Color conversion: {self.colorSpace}")
 
 
 class TriPlanarNode(object):
@@ -110,8 +109,7 @@ class TriPlanarNode(object):
             # TODO  check redshift triplanar
             pass
 
-        if self.debug:
-            print(f"Triplanar node: {self.triPlanar}")
+        logger.debug(f"Triplanar node: {self.triPlanar}")
 
         return self.nodeName
 
@@ -119,8 +117,7 @@ class TriPlanarNode(object):
         self.blendValue = blend
         cmds.setAttr(self.blend, self.blendValue)
 
-        if self.debug:
-            print(f"changed blend value to: {self.blendValue}")
+        logger.debug(f"changed blend value to: {self.blendValue}")
 
     def setScale(self):
         cmds.setAttr(self.nodeName + '.scaleX', self.scale)
@@ -132,28 +129,24 @@ class TriPlanarNode(object):
                          self.dataIn, force=True)
         cmds.connectAttr(self.outColor, output, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input and {output} as output")
+        logger.info(f"connected {input} as input and {output} as output")
 
     def connectData(self, input, output):  # very spaghetti
         cmds.connectAttr(input,
                          self.dataIn, force=True)
         cmds.connectAttr(self.outColorRed, output, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input and {output} as output")
+        logger.info(f"connected {input} as input and {output} as output")
 
     def connectIn(self, input):
         cmds.connectAttr(input, self.dataIn, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input to {self.dataIn}")
+        logger.info(f"connected {input} as input to {self.dataIn}")
 
     def connectOut(self, output):
         cmds.connectAttr(self.outColor, output, force=True)
 
-        if self.debug:
-            print(f"connected {self.outColor} as input to {output}")
+        logger.info(f"connected {self.outColor} as input to {output}")
 
 
 class NormalMapNode(object):
@@ -175,28 +168,26 @@ class NormalMapNode(object):
         else:
             pass
 
-        print(f"NormalMap Node created: {self.normalNode}")
+        logger.debug(f"NormalMap Node created: {self.normalNode}")
 
     def setStrength(self):
-        pass
+        cmds.setAttr(self.nodeName + '.strength', self.strength)
+        logger.debug(f"set {input} strength to {self.strength}")
 
     def connect(self, input, output):
         cmds.connectAttr(input, self.dataIn, force=True)
         cmds.connectAttr(self.normalOut, output, force=True)
-        if self.debug:
-            print(f"connected {input} as input and {output} as output")
+        logger.info(f"connected {input} as input and {output} as output")
 
     def connectIn(self, input):
         cmds.connectAttr(input, self.dataIn, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input to {self.dataIn}")
+        logger.info(f"connected {input} as input to {self.dataIn}")
 
     def connectOut(self, output):
         cmds.connectAttr(self.normalOut, output, force=True)
 
-        if self.debug:
-            print(f"connected {self.normalOut} as input to {output}")
+        logger.info(f"connected {self.normalOut} as input to {output}")
 
 
 class DisplacementNode(object):
@@ -215,32 +206,27 @@ class DisplacementNode(object):
         # TODO check if different nodes for other render engines
         self.dispNode = cmds.shadingNode(
             'displacementShader', name=self.nodeName, asShader=True)
-        print(f"Node created: {self.dispNode}")
+        logger.debug(f"Node created: {self.dispNode}")
 
     def setScale(self):
         cmds.setAttr(self.dispNode + '.scale', self.scale)
+        logger.debug(f"Set {self.nodeName} scale to {self.scale}")
 
     def connect(self, input: str, output: str):
         cmds.connectAttr(input,
                          self.dispIn, force=True)
         cmds.connectAttr(self.dispOut, output, force=True)
-        if self.debug:
-            print(
-                f"connected: {input} as input and {output} as output")
+        logger.info(f"connected: {input} as input and {output} as output")
 
     def connectIn(self, input: str):
         cmds.connectAttr(input,
                          self.dispIn, force=True)
-        if self.debug:
-            print(
-                f"connected: {input} as input to {self.dispIn}")
+        logger.info(f"connected: {input} as input to {self.dispIn}")
 
     def connectOut(self, output: str):
         cmds.connectAttr(self.dispOut, output,
                          force=True)
-        if self.debug:
-            print(
-                f"connected: {self.dispOut} as input to {output}")
+        logger.info(f"connected: {self.dispOut} as input to {output}")
 
 
 class arnoldPBRShader(object):
@@ -254,6 +240,10 @@ class arnoldPBRShader(object):
         self.baseCol = self.shadNodeName + '.baseColor'
         self.metal = self.shadNodeName + '.metalness'
         self.rough = self.shadNodeName + '.specularRoughness'
+        self.transmiss = self.shadNodeName + '.transmission'
+        self.sss = self.shadNodeName + '.subsurface'
+        self.emission = self.shadNodeName + '.emission'  # TODO hcnage to emissionColor
+        self.opacity = self.shadNodeName + '.opacity'
         self.normal = self.shadNodeName + '.normalCamera'
         self.udimFlag = False
 
@@ -265,20 +255,57 @@ class arnoldPBRShader(object):
         cmds.connectAttr(inputConnection,
                          self.baseCol, force=True)
 
+        logger.info(
+            f"connected: {inputConnection} as input to {self.baseCol}")
+
     def connMetal(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.metal, force=True)
+
+        logger.info(f"connected: {inputConnection} as input to {self.metal}")
 
     def connRough(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.rough, force=True)
 
+    def connTransmiss(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.transmiss, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.transmiss}")
+
+    def connSSS(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.sss, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.sss}")
+
+    def connEmmission(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.emission, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.emission}")
+
+    def connOpacity(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.opacity, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.opacity}")
+
     def connNormal(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.normal, force=True)
 
+        logger.info(f"connected: {inputConnection} as input to {self.baseCol}")
+
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
+
+        logger.info(f"connected: {self.colorOut} as input to {output}")
 
     def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, orgSphere: list = [], grpName: str = 'Preview_Spheres_grp', dispSubdivs: int = 3, dispHeight: float = 0.05, debug: bool = False):
 
@@ -293,14 +320,12 @@ class arnoldPBRShader(object):
         if dispInVP:
             self.connColOut(self.shadGrp.surfaceShaderInput)
         # create preview sphere
-        # try:
         self.prevSphere = PrevSphere(
             self.geoName, dispSubdivs, dispHeight=dispHeight)
 
         # check if already one created
         if orgSphere:
-            print(
-                f"OBJECT TO DUPLICATE: {orgSphere}")
+            logger.debug(f"OBJECT TO DUPLICATE: {orgSphere}")
             self.prevSphere.duplicate(orgSphere)
         else:
             self.prevSphere.createNodeWithUdims()
@@ -309,8 +334,6 @@ class arnoldPBRShader(object):
             cmds.parent(self.geoName, self.grpName)
 
         self.prevSphere.moveOver(translateX, translateY, translateZ)
-        # except:
-        #    print(f"ERROR: failed to create instance for {self.geoName}")
 
         # assign Shader
         self.prevSphere.assignShader(self.shadNodeName)
@@ -329,14 +352,16 @@ class arnoldPBRShader(object):
         """
 
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults)
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectColor(tex.colorOut, self.baseCol)
 
+        logger.info(f"connected: {tex.colorOut} as input to {self.baseCol}")
+
     def setupColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults)
         self.connColor(tex.colorOut)
 
     def setupTripMetalness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
@@ -352,14 +377,14 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults)
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, self.metal)
 
     def setupMetalness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         self.connMetal(tex.redColorOut)
 
     def setupTripRoughness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
@@ -375,15 +400,111 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, self.rough)
 
     def setupRoughness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         self.connRough(tex.redColorOut)
+
+    def setupTripTransmiss(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the transmission texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, self.transmiss)
+
+    def setupTransmiss(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connTransmiss(tex.redColorOut)
+
+    def setupTripSSS(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the sss texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, self.sss)
+
+    def setupSSS(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connSSS(tex.redColorOut)
+
+    def setupTripEmission(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the emission texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.redColorOut, self.emission)
+
+    # TODO needs separation between emission and emission color
+
+    def setupEmission(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connEmmission(tex.redColorOut)
+
+    def setupTripOpacity(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the emission texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectColor(tex.ColorOut, self.opacity)
+
+    # TODO needs separation between emission and emission color
+
+    def setupOpacity(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connOpacity(tex.colorOut)
 
     def setupTripNormal(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
         """
@@ -398,7 +519,7 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         normalMap = NormalMapNode(texNodeName)
@@ -407,7 +528,7 @@ class arnoldPBRShader(object):
 
     def setupNormal(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         normalMap = NormalMapNode(texNodeName)
         normalMap.connect(tex.colorOut, self.normal)
 
@@ -424,7 +545,7 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         dispNode = DisplacementNode(texNodeName, scale=dispScale)
         triplanar = TriPlanarNode(texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, dispNode.dispIn)
@@ -434,7 +555,7 @@ class arnoldPBRShader(object):
 
     def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, zeroScaleValue: float = 0.0, dispScale: float = 1.0):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
 
         dispNode = DisplacementNode(texNodeName, scale=dispScale)
         dispNode.connect(tex.redColorOut, self.shadGrp.displacementShaderIn)
@@ -456,12 +577,13 @@ class ShadingGroup(object):
         self.nodeName = cmds.sets(name=self.nodeName,
                                   renderable=True, noSurfaceShader=True, empty=True)
 
+        logger.debug(f"Created {self.nodeName}")
+
 
 class PrevSphere(object):
     """
     This class handles creating the preview sphere geometry and setting it all up for displacement
     """
-    # TODO take care of udim preview on sphreres - could use udim spheres for all
 
     def __init__(self, nodeName: str = 'Preview_Sphere_geo', smoothSteps: int = 2, dispSubdivs: int = 3, tesselation: bool = True, dispHeight: float = 1.0) -> None:
         self.nodeName = nodeName
@@ -479,6 +601,14 @@ class PrevSphere(object):
         mel.eval('u3dLayout -res 4096 -rot 1 -scl 1 -rmn 0 -rmx 360 -rst 90 -spc 0.0078125 -mar 0.0078125 -u 6 -box 0 1 0 1 ' +
                  self.nodeName + '.f[0:6];')
         cmds.polySmooth(self.nodeName, divisions=self.smoothSteps)
+        # don't show while animation is palying
+        cmds.setAttr(self.nodeName + '.hideOnPlayback', 1)
+        # enable drawing overrides otherwise next line is not goona do anything
+        cmds.setAttr(self.nodeName + '.overrideEnabled', 1)
+        # set non selectable so user can't copy and delete by accident
+        cmds.setAttr(self.nodeName + '.overrideDisplayType', 2)
+
+        logger.debug(f"Created {self.nodeName} with UDIMs")
 
     def duplicate(self, prevName):
         cmds.duplicate(prevName)

@@ -1,12 +1,9 @@
 from imp import reload
-from pickle import FALSE
 from maya import cmds
 import maya.mel as mel
 from math import sqrt
 import os
-import nodes
-# from autoMat.src import nodes
-# from autoMat.src import ui
+from autoMat.src import nodes
 reload(nodes)   # TODO remove later only for WIP with maya
 
 
@@ -134,6 +131,54 @@ class autoMat(object):
                         #     print(
                         #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
 
+                elif texType == 'transmission':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupTripTransmiss(
+                            texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
+                elif texType == 'sss':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupTripSSS(
+                            texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
+                elif texType == 'emissive':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupTripTransmission(
+                            texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
+                elif texType == 'opacity':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupTripOpacity(
+                            texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
                 elif texType == 'normal':
                     if texType in self.texTypeList:
                         continue
@@ -246,6 +291,55 @@ class autoMat(object):
                         #     print(
                         #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
 
+                elif texType == 'transmission':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupTransmiss(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
+                elif texType == 'sss':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupSSS(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
+                elif texType == 'emissive':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupEmission(
+
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
+                elif texType == 'opacity':
+                    if texType in self.texTypeList:
+                        continue
+                    else:
+                        # try:
+                        newShader.setupOpacity(
+                            texNodeName, texFilePath, texType, self.csDefaults)
+                        self.texTypeList.append(texType)
+                        # except:
+                        #     print(
+                        #         f"ERROR: failed to create Roughness nodes for {newShader.shadNodeName}")
+
                 elif texType == 'normal':
                     if texType in self.texTypeList:
                         continue
@@ -324,7 +418,7 @@ class autoMat(object):
             if cmds.objExists(self.grpName):
                 cmds.delete(self.grpName)
             # TODO move to own method
-            mel.eval('MLdeleteUnused;')
+            mel.eval('MLdeleteUnused;')  # TODO disable for first release
         except ValueError:
             print("No Objects to delete")
 
