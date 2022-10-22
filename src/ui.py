@@ -1,12 +1,16 @@
-import string
+# Script starts Qt UI for all autoMat Methods from main.py
+
 from maya import cmds
 from maya import OpenMayaUI as omui
 import logging
 import Qt
 from Qt import QtWidgets, QtCore, QtGui
-from importlib import reload
+# from importlib import reload # enable if reload gets used
+# Only use when script gets executed from Maya script editor
 from autoMat.src import main
-reload(main)  # TODO remove later only for WIP with maya
+# Only use when script gets executed from IDE
+# import main
+# reload(main)  # only for WIP with maya to make sure all changes get reloaded
 
 logging.basicConfig()
 logger = logging.getLogger('AutoMat')
@@ -388,4 +392,7 @@ class AutoMatUI(QtWidgets.QWidget):
                 "Input - Generic - sRGB - Texture", "Utility - Raw")
 
     def closeUI(self):
+        """
+        Close UI from Maya
+        """
         cmds.deleteUI('AutoMat')
