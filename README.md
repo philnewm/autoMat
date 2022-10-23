@@ -1,15 +1,13 @@
 # AutoMat
-AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically from a selected textures folder.
-
-## Why do I need it?
-The idea is to make artists life just a __bit easier and automate__ the basics of a PBR material setup.
+AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically from a selected texture folder.
 
 ## What Features does it provide?
 + settings for __colorspace__ selection 
 + setup material for __Triplanar Projection__
++ options for triplanar projection and displacement
 
 ## Planned features
-+ finer controls for Triplanar Projection, Displacement and colorspaces
++ custom option for colorspace defaults
 + additional settings regarding the file search
 + selection for other Render Engines (Vray and Redshift are planned)
 
