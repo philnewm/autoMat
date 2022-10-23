@@ -3,8 +3,8 @@ AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically
 
 ## Features
 + support for aiStandardSurfaceShader
-+ settings for __colorspace__ selection 
-+ setup material for __Triplanar Projection__
++ settings for colorspace selection 
++ setup material for triplanar projection
 + options for triplanar projection and displacement
 
 ## Planned features
