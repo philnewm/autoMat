@@ -3,8 +3,14 @@
 from maya import cmds
 from maya import OpenMayaUI as omui
 import logging
-import Qt
-from Qt import QtWidgets, QtCore, QtGui
+# Only use when script gets executed from Maya script editor
+from autoMat.src import Qt
+# Only use when script gets executed from IDE
+# import Qt
+# Only use when script gets executed from Maya script editor
+from autoMat.src.Qt import QtWidgets, QtCore, QtGui
+# Only use when script gets executed from IDE
+# from Qt import QtWidgets, QtCore, QtGui
 # from importlib import reload # enable if reload gets used
 # Only use when script gets executed from Maya script editor
 from autoMat.src import main
