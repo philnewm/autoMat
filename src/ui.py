@@ -24,15 +24,15 @@ logger.setLevel(logging.INFO)
 
 if Qt.__binding__ == 'PySide':
     from shiboken import wrapInstance
-    from Qt.QtCore import Signal
+    from autoMat.src.Qt.QtCore import Signal
     logger.debug('Using PySide with shiboken')
 elif Qt.__binding__.startswith('PyQt'):
     from sip import wrapinstance as wrapInstance
-    from Qt.QtCore import pyqtSignal as Signal
+    from autoMat.src.Qt.QtCore import pyqtSignal as Signal
     logger.debug('Using Qt with sip')
 else:
     from shiboken2 import wrapInstance
-    from Qt.QtCore import Signal
+    from autoMat.src.Qt.QtCore import Signal
     logger.debug('Using PySide2 with shiboken')
 
 
