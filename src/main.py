@@ -58,6 +58,8 @@ class autoMat(object):
                          'coat': ('coat', ),
                          'sheen': ('sheen', )}
 
+        self.ignoreList = [".", "prev", "thumb"]
+
     # TODO find cleaner way to implement multiple materials setups
     def setupMaterialTrip(self, showInVP=True):
         """
@@ -468,13 +470,16 @@ class autoMat(object):
         for path, directories, files in os.walk(self.dataPath):
 
             # ignore directories starting with '.' (.mayaSwatches, .vrayThumbs)
-            if files and not os.path.split(path)[1].startswith('.'):
+            if files and not any(part in os.path.split(path)[1].lower() for part in self.ignoreList):
+
+                print(
+                    f"file: {os.path.split(path)[1]}, value: {os.path.split(path)[1] not in self.ignoreList}")
 
                 texList = []
                 for file in files:
                     # check name for predefined list of file types
                     fileSplitList = file.split('.')
-                    if fileSplitList[len(fileSplitList) - 1] in acceptedFilesList:
+                    if fileSplitList[len(fileSplitList) - 1] in acceptedFilesList and not any(part in file for part in self.ignoreList):
                         texList.append(file)
 
                 self.dataDict[path] = texList

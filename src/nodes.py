@@ -76,6 +76,7 @@ class FileNode(object):
     def loadImage(self):
         # import image
         if self.udim:
+            # TODO check if only 1001 udim available (fake udim)
             udim_sequence = self.udim.group(0)
             udim_sequence = self.filePath.replace(udim_sequence, '<udim>')
 
