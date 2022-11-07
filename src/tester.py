@@ -1,24 +1,41 @@
 import os
+import re
 
+# dataPath = "/mnt/Projects/tmp/autoMat_rnd/sourceimages"
 
 dataPath = "/mnt/Projects/tmp/autoMat_rnd/sourceimages"
 acceptedFilesList = ['bmp', 'ico', 'jpg',
                      'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
-ignoreList = [".", "previews", "Thumbs",
-              "vdcjfiw_Preview.png", ".vrayThumbs", ".mayaSwatches"]
+ignoreList = ["^\.", "prev", "thumbs", "swatch"]
+
+# ignorePattern = re.compile(r'(\.|prev|thumb|swatch)')
 
 dataDict = {}
 
 
+def check_for_wrong_type(ignore_list: list, search_string: str):
+    pattern_list = ignore_list
+
+    ignore_string = '('
+    separator = '|'
+
+    for item in pattern_list:
+        ignore_string += item + separator
+
+    pattern = re.compile(ignore_string[:-1] + ')', re.IGNORECASE)
+
+    return pattern.search(search_string.lower())
+
+
 def scan_dir(dataPath, acceptedFilesList, ignoreList):
     names = os.listdir(dataPath)
-    # check if string is present in list
     texList = []
     dirList = []
     for name in names:
-        if any(name in ignoreItem for ignoreItem in ignoreList):
+        # check if string is present in ignoreList
+        if check_for_wrong_type(ignoreList, name):
+            print(f'{name} is present in the list')
             continue
-        # print(f'{name} is present in the list')
         else:
             if os.path.isdir(os.path.join(dataPath, name)):
                 dirList.append(name)
@@ -29,6 +46,7 @@ def scan_dir(dataPath, acceptedFilesList, ignoreList):
     if len(texList) != 0:
         dataDict[dataPath] = texList
 
+    # start recursive execusion
     for dir in dirList:
         scan_dir(os.path.join(dataPath, dir), acceptedFilesList, ignoreList)
 
