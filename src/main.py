@@ -5,6 +5,7 @@ from maya import cmds
 import maya.mel as mel
 from math import sqrt
 import os
+import re
 # Only use when script gets executed from Maya script editor
 from autoMat.src import nodes
 # Only use when script gets executed from IDE
@@ -58,7 +59,7 @@ class autoMat(object):
                          'coat': ('coat', ),
                          'sheen': ('sheen', )}
 
-        self.ignoreList = [".", "prev", "thumb"]
+        self.ignoreList = ["^\.", "prev", "thumbs", "swatch"]
 
     # TODO find cleaner way to implement multiple materials setups
     def setupMaterialTrip(self, showInVP=True):
@@ -454,32 +455,82 @@ class autoMat(object):
                     # returns texture types
                     return keys
 
-    def findFiles(self):
+    # def findFiles(self):
+    #     """
+    #     Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
+    #     """
+    #     self.dataDict.clear()
+    #     acceptedFilesList = ['bmp', 'ico', 'jpg',
+    #                          'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
+
+    #     try:
+    #         os.path.exists(self.dataPath)
+    #     except:
+    #         raise ("choosen path does not exist")
+
+    #     for path, directories, files in os.walk(self.dataPath):
+
+    #         # ignore directories starting with '.' (.mayaSwatches, .vrayThumbs)
+    #         if files and not any(part in os.path.split(path)[1].lower() for part in self.ignoreList):
+
+    #             print(
+    #                 f"file: {os.path.split(path)[1]}, value: {os.path.split(path)[1] not in self.ignoreList}")
+
+    #             texList = []
+    #             for file in files:
+    #                 # check name for predefined list of file types
+    #                 fileSplitList = file.split('.')
+    #                 if fileSplitList[len(fileSplitList) - 1] in acceptedFilesList and not any(part in file for part in self.ignoreList):
+    #                     texList.append(file)
+
+    #             self.dataDict[path] = texList
+
+    def check_for_wrong_type(self, ignore_list: list, search_string: str):
+        pattern_list = ignore_list
+
+        ignore_string = '('
+        separator = '|'
+
+        for item in pattern_list:
+            ignore_string += item + separator
+
+        pattern = re.compile(ignore_string[:-1] + ')', re.IGNORECASE)
+
+        return pattern.search(search_string.lower())
+
+    def findFiles(self, dataPath):
         """
         Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
         """
-        self.dataDict.clear()
+        # self.dataDict.clear() # doesn't work when recursion is used
         acceptedFilesList = ['bmp', 'ico', 'jpg',
                              'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
 
         try:
-            os.path.exists(self.dataPath)
+            os.path.exists(dataPath)
         except:
             raise ("choosen path does not exist")
 
-        for path, directories, files in os.walk(self.dataPath):
+        names = os.listdir(dataPath)
+        # print(names)
+        texList = []
+        dirList = []
+        for name in names:
+            # check if string is present in ignoreList
+            if self.check_for_wrong_type(self.ignoreList, name):
+                # print(f'{name} is present in the list')
+                continue
+            else:
+                if os.path.isdir(os.path.join(dataPath, name)):
+                    dirList.append(name)
+                else:
+                    # split filename and type, cut of '.' from filetype and compare with each filetype from acceptedFilesList and add to new list if True
+                    if any(os.path.splitext(name)[1][1:] in acceptedType for acceptedType in acceptedFilesList):
+                        texList.append(name)
 
-            # ignore directories starting with '.' (.mayaSwatches, .vrayThumbs)
-            if files and not any(part in os.path.split(path)[1].lower() for part in self.ignoreList):
+        if len(texList) != 0:
+            self.dataDict[dataPath] = texList
 
-                print(
-                    f"file: {os.path.split(path)[1]}, value: {os.path.split(path)[1] not in self.ignoreList}")
-
-                texList = []
-                for file in files:
-                    # check name for predefined list of file types
-                    fileSplitList = file.split('.')
-                    if fileSplitList[len(fileSplitList) - 1] in acceptedFilesList and not any(part in file for part in self.ignoreList):
-                        texList.append(file)
-
-                self.dataDict[path] = texList
+        # start recursive execusion
+        for dir in dirList:
+            self.findFiles(os.path.join(dataPath, dir))

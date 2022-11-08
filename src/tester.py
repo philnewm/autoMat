@@ -1,9 +1,8 @@
 import os
 import re
 
-# dataPath = "/mnt/Projects/tmp/autoMat_rnd/sourceimages"
-
 dataPath = "/mnt/Projects/tmp/autoMat_rnd/sourceimages"
+
 acceptedFilesList = ['bmp', 'ico', 'jpg',
                      'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
 ignoreList = ["^\.", "prev", "thumbs", "swatch"]
@@ -34,7 +33,7 @@ def scan_dir(dataPath, acceptedFilesList, ignoreList):
     for name in names:
         # check if string is present in ignoreList
         if check_for_wrong_type(ignoreList, name):
-            print(f'{name} is present in the list')
+            # print(f'{name} is present in the list')
             continue
         else:
             if os.path.isdir(os.path.join(dataPath, name)):
@@ -43,6 +42,7 @@ def scan_dir(dataPath, acceptedFilesList, ignoreList):
                 # split filename and type, cut of '.' from filetype and compare with each filetype from acceptedFilesList and add to new list if True
                 if any(os.path.splitext(name)[1][1:] in acceptedType for acceptedType in acceptedFilesList):
                     texList.append(name)
+
     if len(texList) != 0:
         dataDict[dataPath] = texList
 
