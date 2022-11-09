@@ -1,6 +1,10 @@
 # This code uses mainly the nodes.py content to setup mroe complex processes
 # The loading loading  and sorting functions got a custome implementation
 
+# only for WIP with maya to make sure all changes get reloaded
+import logging
+from importlib import reload
+
 from maya import cmds
 import maya.mel as mel
 from math import sqrt
@@ -10,6 +14,12 @@ import re
 from autoMat.src import nodes
 # Only use when script gets executed from IDE
 # import nodes
+reload(nodes)  # only for WIP with maya to make sure all changes get reloaded
+
+
+logging.basicConfig()
+logger = logging.getLogger('AutoMat')
+logger.setLevel(logging.INFO)
 
 
 class autoMat(object):
@@ -32,6 +42,19 @@ class autoMat(object):
         self.curTexType = 'default'
         self.texTypeList = []
         self.orgSphere = None
+
+        self.prevColor = None
+        self.prevMetal = None
+        self.prevRough = None
+        self.prevGloss = None
+        self.prevNormal = None
+        self.prevDisp = None
+        self.prevEmissive = None
+        self.prevSSS = None
+        self.prevTransmission = None
+        self.prevOpacity = None
+        self.prevCoat = None
+        self.prevSheen = None
 
         # displacement values
         self.dispSubdivs = 3
@@ -268,9 +291,12 @@ class autoMat(object):
 
                 if texType == 'color':
                     if texType in self.texTypeList:
+                        # TODO implement cleaner way of changing file nodes path
+                        self.change_to_UDIM(self.prevColor)
                         continue
                     else:
                         try:
+                            self.prevColor = texNodeName
                             newShader.setupColor(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -280,9 +306,11 @@ class autoMat(object):
 
                 elif texType == 'metalness':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevMetal)
                         continue
                     else:
                         try:
+                            self.prevMetal = texNodeName
                             newShader.setupMetalness(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -292,9 +320,12 @@ class autoMat(object):
 
                 elif texType == 'roughness':
                     if texType in self.texTypeList:
+                        print()
+                        self.change_to_UDIM(self.prevRough)
                         continue
                     else:
                         try:
+                            self.prevRough = texNodeName
                             newShader.setupRoughness(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -304,9 +335,11 @@ class autoMat(object):
 
                 elif texType == 'transmission':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevTransmission)
                         continue
                     else:
                         try:
+                            self.prevTransmission = texNodeName
                             newShader.setupTransmiss(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -316,9 +349,11 @@ class autoMat(object):
 
                 elif texType == 'sss':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevSSS)
                         continue
                     else:
                         try:
+                            self.prevSSS = texNodeName
                             newShader.setupSSS(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -328,11 +363,12 @@ class autoMat(object):
 
                 elif texType == 'emissive':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevEmissive)
                         continue
                     else:
                         try:
+                            self.prevEmissive = texNodeName
                             newShader.setupEmission(
-
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
                         except:
@@ -341,9 +377,11 @@ class autoMat(object):
 
                 elif texType == 'opacity':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevOpacity)
                         continue
                     else:
                         try:
+                            self.prevOpacity = texNodeName
                             newShader.setupOpacity(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -353,9 +391,11 @@ class autoMat(object):
 
                 elif texType == 'normal':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevNormal)
                         continue
                     else:
                         try:
+                            self.prevNormal = texNodeName
                             newShader.setupNormal(
                                 texNodeName, texFilePath, texType, self.csDefaults)
                             self.texTypeList.append(texType)
@@ -371,9 +411,11 @@ class autoMat(object):
                         zeroScaleValue = 0.5
 
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevDisp)
                         continue
                     else:
                         try:
+                            self.prevDisp = texNodeName
                             newShader.setupDisplacement(
                                 texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue, self.dispHeight)
                             self.texTypeList.append(texType)
@@ -455,36 +497,6 @@ class autoMat(object):
                     # returns texture types
                     return keys
 
-    # def findFiles(self):
-    #     """
-    #     Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
-    #     """
-    #     self.dataDict.clear()
-    #     acceptedFilesList = ['bmp', 'ico', 'jpg',
-    #                          'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
-
-    #     try:
-    #         os.path.exists(self.dataPath)
-    #     except:
-    #         raise ("choosen path does not exist")
-
-    #     for path, directories, files in os.walk(self.dataPath):
-
-    #         # ignore directories starting with '.' (.mayaSwatches, .vrayThumbs)
-    #         if files and not any(part in os.path.split(path)[1].lower() for part in self.ignoreList):
-
-    #             print(
-    #                 f"file: {os.path.split(path)[1]}, value: {os.path.split(path)[1] not in self.ignoreList}")
-
-    #             texList = []
-    #             for file in files:
-    #                 # check name for predefined list of file types
-    #                 fileSplitList = file.split('.')
-    #                 if fileSplitList[len(fileSplitList) - 1] in acceptedFilesList and not any(part in file for part in self.ignoreList):
-    #                     texList.append(file)
-
-    #             self.dataDict[path] = texList
-
     def check_for_wrong_type(self, ignore_list: list, search_string: str):
         pattern_list = ignore_list
 
@@ -510,8 +522,12 @@ class autoMat(object):
             os.path.exists(dataPath)
         except:
             raise ("choosen path does not exist")
+        try:
+            names = os.listdir(dataPath)
+        except:
+            print(
+                f"ERROR: path does not exist {dataPath}")
 
-        names = os.listdir(dataPath)
         # print(names)
         texList = []
         dirList = []
@@ -534,3 +550,19 @@ class autoMat(object):
         # start recursive execusion
         for dir in dirList:
             self.findFiles(os.path.join(dataPath, dir))
+
+    def change_to_UDIM(self, nodeName: str):
+        # import images as UDIMs
+        imagePath = cmds.getAttr(nodeName + '.filename')
+        udim = re.search(r'\d{4}', os.path.split(imagePath)[1])
+        if udim:
+            udim_sequence = udim.group(0)
+            udim_sequence = imagePath(udim_sequence, '<udim>')
+
+            cmds.setAttr(nodeName + '.filename',
+                         udim_sequence, type='string')
+            logger.info(
+                f"image changed to udims: {udim_sequence}")
+
+        logger.info(
+            f"image not changed to udims")
