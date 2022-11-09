@@ -1,5 +1,7 @@
 # Script starts Qt UI for all autoMat Methods from main.py
 
+# only for WIP with maya to make sure all changes get reloaded
+from importlib import reload
 from maya import cmds
 from maya import OpenMayaUI as omui
 import logging
@@ -16,7 +18,7 @@ from autoMat.src.Qt import QtWidgets, QtCore, QtGui
 from autoMat.src import main
 # Only use when script gets executed from IDE
 # import main
-# reload(main)  # only for WIP with maya to make sure all changes get reloaded
+reload(main)  # only for WIP with maya to make sure all changes get reloaded
 
 logging.basicConfig()
 logger = logging.getLogger('AutoMat')
@@ -319,12 +321,16 @@ class AutoMatUI(QtWidgets.QWidget):
         dialog.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, True)
         dialog.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
         self.autoMat.dataPath = dialog.getExistingDirectory()
-        self.autoMat.findFiles()
+        # TODO cleaner method for dataDict clearing needed
+        self.autoMat.dataDict.clear()
+        self.autoMat.findFiles(self.autoMat.dataPath)
         self.populate()
 
     def updatePath(self):
         self.autoMat.dataPath = self.loadNameField.text()
-        self.autoMat.findFiles()
+        # TODO cleaner method for dataDict clearing needed
+        self.autoMat.dataDict.clear()
+        self.autoMat.findFiles(self.autoMat.dataPath)
         self.populate()
 
     def setDispSubdiv(self):

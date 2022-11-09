@@ -36,7 +36,6 @@ class FileNode(object):
 
         self.nodeName = nodeName
         self.filePath = imagePath
-        self.udim = re.search(r'\d\d\d\d', os.path.split(imagePath)[1])
         self.col_cs, self.util_cs = csDefaults
         self.colorSpace = None
         self.renderEngine = renderEngine
@@ -75,15 +74,16 @@ class FileNode(object):
 
     def loadImage(self):
         # import image
-        if self.udim:
-            udim_sequence = self.udim.group(0)
-            udim_sequence = self.filePath.replace(udim_sequence, '<udim>')
+        # if self.udim:
+        #     # TODO check if only 1001 udim available (fake udim)
+        #     udim_sequence = self.udim.group(0)
+        #     udim_sequence = self.filePath.replace(udim_sequence, '<udim>')
 
-            cmds.setAttr(self.nodeName + '.filename',
-                         udim_sequence, type='string')
-            logger.info(
-                f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
-            return
+        #     cmds.setAttr(self.nodeName + '.filename',
+        #                  udim_sequence, type='string')
+        #     logger.info(
+        #         f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
+        #     return
 
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
