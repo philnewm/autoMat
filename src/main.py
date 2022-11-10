@@ -555,14 +555,20 @@ class autoMat(object):
         # import images as UDIMs
         imagePath = cmds.getAttr(nodeName + '.filename')
         udim = re.search(r'\d{4}', os.path.split(imagePath)[1])
-        if udim:
-            udim_sequence = udim.group(0)
-            udim_sequence = imagePath(udim_sequence, '<udim>')
 
-            cmds.setAttr(nodeName + '.filename',
-                         udim_sequence, type='string')
-            logger.info(
-                f"image changed to udims: {udim_sequence}")
+        if udim:
+            try:
+                udim_sequence = udim.group(0)
+                udim_sequence = imagePath(udim_sequence, '<udim>')
+
+                cmds.setAttr(nodeName + '.filename',
+                             udim_sequence, type='string')
+                logger.info(
+                    f"image changed to udims: {udim_sequence}")
+            except:
+                print(
+                    f"ERROR: Unable to setup up UDIMs for {imagePath}")
+            return
 
         logger.info(
             f"image not changed to udims")
