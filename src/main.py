@@ -515,8 +515,8 @@ class autoMat(object):
         Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
         """
         # self.dataDict.clear() # doesn't work when recursion is used
-        acceptedFilesList = ['bmp', 'ico', 'jpg',
-                             'jpeg', 'jng', 'pbm', 'pgm', 'png', 'ppm', 'tga', 'tiff', 'wbmp', 'xpm', 'gif', 'hdr', 'exr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
+        acceptedFilesList = ['exr', 'tga', 'tiff', 'png', 'jpg', 'jpeg', 'bmp', 'ico', 'jng', 'pbm',
+                             'pgm', 'ppm', 'wbmp', 'xpm', 'gif', 'hdr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
 
         try:
             os.path.exists(dataPath)
