@@ -42,6 +42,7 @@ class FileNode(object):
         self.texType = texType
         self.name = None
         self.enableAutoTX = enableAutoTX
+        self.ignoreMissingTex = True
 
         self.colorOut = self.nodeName + '.outColor'
         self.redColorOut = self.nodeName + '.outColor.outColorR'
@@ -59,7 +60,6 @@ class FileNode(object):
             _type_: _description_
         """
         # check which file node to create
-        print(self.renderEngine)
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
             # create file node
@@ -88,12 +88,15 @@ class FileNode(object):
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
         cmds.setAttr(self.nodeName + '.autoTx', self.enableAutoTX)
+        cmds.setAttr(self.nodeName + '.ignoreMissingTextures',
+                     self.ignoreMissingTex)
 
         logger.info(
             f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
     def setColorSpace(self):  # TODO add custom input method
-        if self.texType == 'color':
+        # check if .exr files or not and use all as utility raw or not
+        if self.texType == 'color' and os.path.splitext(os.path.split(self.filePath)[1])[1][1:] != "exr":
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.col_cs, type='string')
             self.colorSpace = self.col_cs

@@ -344,7 +344,6 @@ class AutoMatUI(QtWidgets.QWidget):
 
     def setTripBlend(self):
         self.autoMat.triBlend = float(self.blendLineEdit.text())
-        print(self.autoMat.triBlend)
 
     def executeScript(self):
         """
