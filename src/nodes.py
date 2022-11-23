@@ -59,7 +59,7 @@ class FileNode(object):
         Returns:
             _type_: _description_
         """
-        # check which file node to create
+        # NEWFEATURE check render engine and create corresponding file node
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
             # create file node
@@ -82,7 +82,7 @@ class FileNode(object):
         logger.info(
             f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
-    def setColorSpace(self):  # TODO add custom input method
+    def setColorSpace(self):  # NEWFEATURE add custom input method
         # check if .exr files or not and use all as utility raw or not
         if self.texType == 'color' and os.path.splitext(os.path.split(self.filePath)[1])[1][1:] != "exr":
             cmds.setAttr(self.nodeName + '.colorSpace',
@@ -119,11 +119,11 @@ class TriPlanarNode(object):
                 'aiTriplanar', name=self.nodeName, asTexture=True)
             cmds.setAttr(self.blend, self.blendValue)
         if self.renderEngine == 'vray':
-            # TODO  check vray triplanar
+            # TODO check vray triplanar
             pass
 
         if self.renderEngine == 'redshift':
-            # TODO  check redshift triplanar
+            # TODO check redshift triplanar
             pass
 
         logger.debug(f"Triplanar node: {self.triPlanar}")
@@ -218,7 +218,7 @@ class DisplacementNode(object):
         self.createNode()
 
     def createNode(self):
-        # TODO check if different nodes for other render engines
+        # NEWFEATURE check if different nodes for other render engines
         self.dispNode = cmds.shadingNode(
             'displacementShader', name=self.nodeName, asShader=True)
         logger.debug(f"Node created: {self.dispNode}")

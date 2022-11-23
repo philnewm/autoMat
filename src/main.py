@@ -14,7 +14,7 @@ import re
 from autoMat.src import nodes
 # Only use when script gets executed from IDE
 # import nodes
-reload(nodes)  # only for WIP with maya to make sure all changes get reloaded
+reload(nodes)  # TODO only for WIP with maya to make sure all changes get reloaded
 
 
 logging.basicConfig()
@@ -82,13 +82,16 @@ class autoMat(object):
                          'coat': ('coat', ),
                          'sheen': ('sheen', )}
 
-        # TODO remove LODs from here and implement clean LOD handling
+        # TODO remove LODs from here
+        # NEWFEATURE implement clean LOD handling
+        # README no LOD handling yet
         self.ignoreList = ["^\.", "prev", "thumbs", "swatch", "lod[1-9]"]
 
         self.specialCharsList = [" ", "-", ".", ",", ";", "#",
                                  "'", "´", "`", "!", "?", "%", "&", "~", "*"]
 
-    # TODO find cleaner way to implement multiple materials setups
+    # NEWFEATURE find cleaner way to implement multiple materials setups
+    # NEWFEATURE rewrite implementation for switching to triplanar setup
     def setupMaterialTrip(self, showInVP=True):
         """
         This Sets up a complete PBR material based on available textures using triplanar mapping.
@@ -129,6 +132,7 @@ class autoMat(object):
                 self.prevTexType = self.curTexType
                 self.curTexType = texType
 
+                # NEWFEATURE use loop for each shader channel
                 if texType == 'color':
                     if texType in self.texTypeList:
                         continue
@@ -264,6 +268,7 @@ class autoMat(object):
                 self.prevTexType = self.curTexType
                 self.curTexType = texType
 
+                # NEWFEATURE loop through shader channels
                 if texType == 'color':
                     if texType in self.texTypeList:
                         # TODO implement cleaner way of changing file nodes path
@@ -361,7 +366,7 @@ class autoMat(object):
                             texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue, self.dispHeight)
                         self.texTypeList.append(texType)
 
-        # renable when all working
+        # TODO renable when all working
         try:
             mel.eval(
                 'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
@@ -435,6 +440,7 @@ class autoMat(object):
                     # returns texture types
                     return keys
 
+    # use the ignore list
     def check_for_wrong_type(self, ignore_list: list, search_string: str):
         pattern_list = ignore_list
 
@@ -452,7 +458,7 @@ class autoMat(object):
         """
         Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
         """
-        # self.dataDict.clear() # doesn't work when recursion is used
+        # BUG self.dataDict.clear() # doesn't work when recursion is used
         acceptedFilesList = ['exr', 'tga', 'tiff', 'tif', 'png', 'jpg', 'jpeg', 'bmp', 'ico', 'jng', 'pbm',
                              'pgm', 'ppm', 'wbmp', 'xpm', 'gif', 'hdr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
 
@@ -521,12 +527,13 @@ class autoMat(object):
                     f"image changed to udims: {udim_sequence}")
             except:
                 print(
-                    f"ERROR: Unable to setup up UDUMs for {imagePath}")  # TODO rename to UDIMs
+                    f"ERROR: Unable to setup up UDIMs for {imagePath}")
             return
 
         logger.info(
             f"image not changed to udims")
 
+    # Maya converts special characters to lower case, need to do that here as well
     def replaceSpecialChars(self, input_string: str, replaceCharList: list, replaceChar):
         for item in replaceCharList:
             input_string = input_string.replace(item, replaceChar)
