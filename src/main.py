@@ -85,7 +85,8 @@ class autoMat(object):
         # TODO remove LODs from here
         # NEWFEATURE implement clean LOD handling
         # README no LOD handling yet
-        self.ignoreList = ["^\.", "prev", "thumbs", "swatch", "lod[1-9]"]
+        self.ignoreList = ["^\.", "prev",
+                           "thumbs", "swatch", "lod[1-9]", "hdr"]
 
         self.specialCharsList = [" ", "-", ".", ",", ";", "#",
                                  "'", "´", "`", "!", "?", "%", "&", "~", "*"]
@@ -99,7 +100,7 @@ class autoMat(object):
         Args:
             showInVP (bool, optional): Set if materials should be visible in maya viewport or not. Defaults to True.
         """
-        self.cleanUp()
+        self.delPrevSpheres()
         moveStep = 0
         columns = round(sqrt(len(self.dataDict.keys())))
 
@@ -227,7 +228,7 @@ class autoMat(object):
         Args:
             showInVP (bool, optional): Set if materials should be visible in maya viewport or not. Defaults to True.
         """
-        self.cleanUp()
+        self.delPrevSpheres()
         moveStep = 0
         columns = round(sqrt(len(self.dataDict.keys())))
 
@@ -407,7 +408,7 @@ class autoMat(object):
         texType = self.getType(texNodeName)
         return texNodeName, texFilePath, texType, texFileType
 
-    def cleanUp(self):
+    def delPrevSpheres(self):
         """
         Cleans all existing materials and preview spheres from the maya scene.
         """
@@ -417,10 +418,11 @@ class autoMat(object):
             cmds.delete('*_previewSphere_geo')
             if cmds.objExists(self.grpName):
                 cmds.delete(self.grpName)
-            # TODO move to own method
-            # mel.eval('MLdeleteUnused;')  # TODO disable for first release
         except ValueError:
             print("No Objects to delete")
+
+    def delUnusedNodes(self):
+        mel.eval('MLdeleteUnused;')
 
     def getType(self, name: str):
         """
@@ -538,5 +540,5 @@ class autoMat(object):
         for item in replaceCharList:
             input_string = input_string.replace(item, replaceChar)
 
-        print(f"Converted string: {input_string}")
+        logger.debug(f"Converted string: {input_string}")
         return input_string

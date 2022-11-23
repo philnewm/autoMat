@@ -267,11 +267,17 @@ class AutoMatUI(QtWidgets.QWidget):
 
         # TODO button to hide spheres
 
-        matResetBtn = QtWidgets.QPushButton('Remove Spheres')
-        matResetBtn.setStyleSheet("font-size: 11pt")
-        matResetBtn.setToolTip("remove all created preview spheres")
-        matResetBtn.clicked.connect(self.resetMats)
-        btnLayout.addWidget(matResetBtn)
+        delPrevSphereBtn = QtWidgets.QPushButton('Remove Spheres')
+        delPrevSphereBtn.setStyleSheet("font-size: 11pt")
+        delPrevSphereBtn.setToolTip("remove all created preview spheres")
+        delPrevSphereBtn.clicked.connect(self.delSpheres)
+        btnLayout.addWidget(delPrevSphereBtn)
+
+        delUnusedBtn = QtWidgets.QPushButton('Remove Unused Nodes')
+        delUnusedBtn.setStyleSheet("font-size: 11pt")
+        delUnusedBtn.setToolTip("remove all unused nodes from project")
+        delUnusedBtn.clicked.connect(self.delUnused)
+        btnLayout.addWidget(delUnusedBtn)
 
         closeBtn = QtWidgets.QPushButton('Close')
         closeBtn.setStyleSheet("font-size: 11pt")
@@ -360,8 +366,11 @@ class AutoMatUI(QtWidgets.QWidget):
             self.setDisplacementHeight()
             self.autoMat.setupMaterial(showInVP=self.showInVP)
 
-    def resetMats(self):
-        self.autoMat.cleanUp()
+    def delSpheres(self):
+        self.autoMat.delPrevSpheres()
+
+    def delUnused(self):
+        self.autoMat.delUnusedNodes()
 
     def clearList(self):
         self.autoMat.dataDict.clear()
