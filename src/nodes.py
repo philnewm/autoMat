@@ -73,18 +73,6 @@ class FileNode(object):
         return self.nodeName
 
     def loadImage(self):
-        # import image
-        # if self.udim:
-        #     # TODO check if only 1001 udim available (fake udim)
-        #     udim_sequence = self.udim.group(0)
-        #     udim_sequence = self.filePath.replace(udim_sequence, '<udim>')
-
-        #     cmds.setAttr(self.nodeName + '.filename',
-        #                  udim_sequence, type='string')
-        #     logger.info(
-        #         f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
-        #     return
-
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
         cmds.setAttr(self.nodeName + '.autoTx', self.enableAutoTX)

@@ -82,7 +82,7 @@ class autoMat(object):
                          'coat': ('coat', ),
                          'sheen': ('sheen', )}
 
-        # TODO remove lods from here and implement clean LOD handling
+        # TODO remove LODs from here and implement clean LOD handling
         self.ignoreList = ["^\.", "prev", "thumbs", "swatch", "lod[1-9]"]
 
         self.specialCharsList = [" ", "-", ".", ",", ";", "#",
@@ -133,97 +133,65 @@ class autoMat(object):
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripColor(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create basecolor nodes for {newShader.shadNodeName}")
 
                 elif texType == 'metalness':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripMetalness(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create metalness nodes for {newShader.shadNodeName}")
 
                 elif texType == 'roughness':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripRoughness(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create roughness nodes for {newShader.shadNodeName}")
 
                 elif texType == 'transmission':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripTransmiss(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create transmission nodes for {newShader.shadNodeName}")
 
                 elif texType == 'sss':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripSSS(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create sss nodes for {newShader.shadNodeName}")
 
                 elif texType == 'emissive':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripTransmission(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create emission nodes for {newShader.shadNodeName}")
 
                 elif texType == 'opacity':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripOpacity(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create opacity nodes for {newShader.shadNodeName}")
 
                 elif texType == 'normal':
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripNormal(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create NormalMap nodes for {newShader.shadNodeName}")
 
                 elif texType == 'displacement':
                     # adjust zero scale if neccessary
@@ -235,13 +203,9 @@ class autoMat(object):
                     if texType in self.texTypeList:
                         continue
                     else:
-                        # try:
                         newShader.setupTripDisplacement(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale, zeroScaleValue, self.dispHeight)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create Displacement nodes for {newShader.shadNodeName}")
 
             # renable when all working
             try:
@@ -306,112 +270,80 @@ class autoMat(object):
                         self.change_to_UDIM(self.prevColor)
                         continue
                     else:
-                        # try:
                         self.prevColor = texNodeName
                         newShader.setupColor(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create basecolor nodes for {newShader.shadNodeName}")
 
                 elif texType == 'metalness':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevMetal)
                         continue
                     else:
-                        # try:
                         self.prevMetal = texNodeName
                         newShader.setupMetalness(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create metalness nodes for {newShader.shadNodeName}")
 
                 elif texType == 'roughness':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevRough)
                         continue
                     else:
-                        # try:
                         self.prevRough = texNodeName
                         newShader.setupRoughness(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create roughness nodes for {newShader.shadNodeName}")
 
                 elif texType == 'transmission':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevTransmission)
                         continue
                     else:
-                        # try:
                         self.prevTransmission = texNodeName
                         newShader.setupTransmiss(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create transmission nodes for {newShader.shadNodeName}")
 
                 elif texType == 'sss':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevSSS)
                         continue
                     else:
-                        # try:
                         self.prevSSS = texNodeName
                         newShader.setupSSS(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create sss nodes for {newShader.shadNodeName}")
 
                 elif texType == 'emissive':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevEmissive)
                         continue
                     else:
-                        # try:
                         self.prevEmissive = texNodeName
                         newShader.setupEmission(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create emission nodes for {newShader.shadNodeName}")
 
                 elif texType == 'opacity':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevOpacity)
                         continue
                     else:
-                        # try:
                         self.prevOpacity = texNodeName
                         newShader.setupOpacity(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create opacity nodes for {newShader.shadNodeName}")
 
                 elif texType == 'normal':
                     if texType in self.texTypeList:
                         self.change_to_UDIM(self.prevNormal)
                         continue
                     else:
-                        # try:
                         self.prevNormal = texNodeName
                         newShader.setupNormal(
                             texNodeName, texFilePath, texType, self.csDefaults)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create normal-map nodes for {newShader.shadNodeName}")
 
                 elif texType == 'displacement':
                     # adjust zero scale if neccessary
@@ -424,14 +356,10 @@ class autoMat(object):
                         self.change_to_UDIM(self.prevDisp)
                         continue
                     else:
-                        # try:
                         self.prevDisp = texNodeName
                         newShader.setupDisplacement(
                             texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue, self.dispHeight)
                         self.texTypeList.append(texType)
-                        # except:
-                        #     print(
-                        #         f"ERROR: failed to create Displacement nodes for {newShader.shadNodeName}")
 
         # renable when all working
         try:
@@ -573,7 +501,7 @@ class autoMat(object):
         if len(texList) != 0:
             self.dataDict[dataPath] = texList
 
-        # start recursive execusion
+        # start recursive execusion of dir searching
         for dir in dirList:
             self.findFiles(os.path.join(dataPath, dir))
 
