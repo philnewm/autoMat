@@ -330,6 +330,7 @@ class AutoMatUI(QtWidgets.QWidget):
         # TODO cleaner method for dataDict clearing needed
         self.autoMat.dataDict.clear()
         self.autoMat.findFiles(self.autoMat.dataPath)
+        print(self.autoMat.dataDict)
         self.populate()
 
     def updatePath(self):

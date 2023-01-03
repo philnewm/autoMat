@@ -231,6 +231,7 @@ class autoMat(object):
         self.delPrevSpheres()
         moveStep = 0
         columns = round(sqrt(len(self.dataDict.keys())))
+        shaderNameOffset = 1
 
         if not cmds.objExists(self.grpName):
             cmds.group(empty=True, name=self.grpName)
@@ -243,6 +244,7 @@ class autoMat(object):
             # remove spaces , dots and "-" from node name
             shaderNodeName = self.replaceSpecialChars(
                 os.path.split(key)[1], self.specialCharsList, "_")
+
             # setup shader
             try:
                 newShader = nodes.arnoldPBRShader(shaderNodeName)
@@ -256,6 +258,15 @@ class autoMat(object):
                 print(
                     f"ERROR: failed to assign shader {shaderNodeName} to preview sphere {newShader.geoName}")
             moveStep += 1
+            colorNodeNameOffset = 1
+            metalNodeNameOffset = 1
+            roughNodeNameOffset = 1
+            transNodeNameOffset = 1
+            sssNodeNameOffset = 1
+            emissNodeNameOffset = 1
+            opacityNodeNameOffset = 1
+            normalNodeNameOffset = 1
+            dispNodeNameOffset = 1
             self.orgSphere = newShader.geoName
 
             for v in value:
