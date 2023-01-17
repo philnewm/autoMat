@@ -62,12 +62,20 @@ class FileNode(object):
         # NEWFEATURE check render engine and create corresponding file node
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
-            # create file node
-            self.name = cmds.shadingNode(
-                self.imageNode, name=self.nodeName, asTexture=True, isColorManaged=True)
-
         else:
             self.imageNode = 'file'  # TODO check for correct naming
+
+        # create file node
+        counter = 1
+        if cmds.objExists(self.nodeName):
+            while cmds.objExists(self.nodeName + str(counter)):
+                counter += 1
+
+            self.nodeName += str(counter)
+
+        else:
+            self.name = cmds.shadingNode(
+                self.imageNode, name=self.nodeName, asTexture=True, isColorManaged=True)
 
         logger.debug(f"file node: {self.imageNode}")
         return self.nodeName
@@ -341,7 +349,7 @@ class arnoldPBRShader(object):
         # check if already one created
         if orgSphere:
             logger.debug(f"OBJECT TO DUPLICATE: {orgSphere}")
-            self.prevSphere.duplicate(orgSphere)
+            cmds.duplicate(orgSphere, name=self.geoName)
         else:
             self.prevSphere.createNodeWithUdims()
             self.prevSphere.setupDisplacement()
@@ -627,7 +635,17 @@ class PrevSphere(object):
 
     def duplicate(self, prevName):
         cmds.duplicate(prevName)
-        cmds.rename(prevName + '1', self.nodeName)
+
+        counter = 1  # init counter
+
+        if cmds.objExists(prevName):
+            while cmds.objExists(prevName + str(counter)):
+                counter += 1
+
+            cmds.rename(prevName + str(counter), self.nodeName)
+        else:
+
+            cmds.rename(prevName, self.nodeName)
 
     def setupDisplacement(self):
         cmds.setAttr(self.shapeNodeName + '.aiSubdivType', 1)

@@ -117,12 +117,8 @@ class autoMat(object):
             newShader = nodes.arnoldPBRShader(shaderNodeName)
 
             # assign to preview mesh
-            try:
-                newShader.assigntoSphere(-2 * (moveStep % columns), 0,
-                                         (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
-            except:
-                print(
-                    f"ERROR: failed to assign shader {shaderNodeName} to preview sphere {newShader.geoName}")
+            newShader.assigntoSphere(-2 * (moveStep % columns), 0,
+                                     (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
             moveStep += 1
             self.orgSphere = newShader.geoName
 
@@ -245,18 +241,18 @@ class autoMat(object):
             shaderNodeName = self.replaceSpecialChars(
                 os.path.split(key)[1], self.specialCharsList, "_")
 
+            # add number to name and increment if node exists
+            print(shaderNodeName)
+            shaderNodeName = self.rename_if_exists(shaderNodeName)
+
             # setup shader
             try:
                 newShader = nodes.arnoldPBRShader(shaderNodeName)
             except:
                 print(f"ERROR: failed to create shader {shaderNodeName}")
             # assign to preview mesh
-            try:
-                newShader.assigntoSphere(-2 * (moveStep % columns), 0,
-                                         (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
-            except:
-                print(
-                    f"ERROR: failed to assign shader {shaderNodeName} to preview sphere {newShader.geoName}")
+            newShader.assigntoSphere(-2 * (moveStep % columns), 0,
+                                     (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
             moveStep += 1
             colorNodeNameOffset = 1
             metalNodeNameOffset = 1
@@ -276,6 +272,9 @@ class autoMat(object):
                 # remove spaces , dots and "-" from node name
                 texNodeName = self.replaceSpecialChars(
                     texNodeName, self.specialCharsList, "_")
+
+                # add number to name and increment if node exists
+                texNodeName = self.rename_if_exists(texNodeName)
 
                 self.prevTexType = self.curTexType
                 self.curTexType = texType
@@ -546,6 +545,8 @@ class autoMat(object):
         logger.info(
             f"image not changed to udims")
 
+# TODO !!!CREATE NEW NODE CLASS TO HANDLE ALL SPECIAL EXCEPTIONS!!!
+
     # Maya converts special characters to lower case, need to do that here as well
     def replaceSpecialChars(self, input_string: str, replaceCharList: list, replaceChar):
         for item in replaceCharList:
@@ -553,3 +554,15 @@ class autoMat(object):
 
         logger.debug(f"Converted string: {input_string}")
         return input_string
+
+    def rename_if_exists(self, node_name):
+        counter = 1  # init counter
+
+        if cmds.objExists(node_name):
+            while cmds.objExists(node_name + str(counter)):
+                counter += 1
+
+            return node_name + str(counter)
+        else:
+
+            return node_name
