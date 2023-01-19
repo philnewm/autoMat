@@ -243,13 +243,11 @@ class autoMat(object):
 
             # add number to name and increment if node exists
             print(shaderNodeName)
-            shaderNodeName = self.rename_if_exists(shaderNodeName)
+            shaderNodeName = self.rename_if_exists(
+                shaderNodeName)  # TODO add _AutoMatShader to name
 
             # setup shader
-            try:
-                newShader = nodes.arnoldPBRShader(shaderNodeName)
-            except:
-                print(f"ERROR: failed to create shader {shaderNodeName}")
+            newShader = nodes.arnoldPBRShader(shaderNodeName)
             # assign to preview mesh
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
                                      (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
