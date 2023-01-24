@@ -256,8 +256,7 @@ class arnoldPBRShader(object):
     def __init__(self, nodeName: str = 'PBRShader') -> None:
         self.nodeName = nodeName
         self.geoName = nodeName + '_previewSphere_geo'
-        self.shadNodeName = nodeName
-        # TODO add clear naming for ShadGrp and '_AutoMatShader'
+        self.shadNodeName = nodeName + '_AutoMatShader'
         self.shadingGrpName = nodeName + '_ShadGrp'
         self.shadGrp = None
         self.colorOut = self.shadNodeName + '.outColor'

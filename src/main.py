@@ -243,8 +243,9 @@ class autoMat(object):
 
             # add number to name and increment if node exists
             print(shaderNodeName)
-            shaderNodeName = self.rename_if_exists(
-                shaderNodeName)  # TODO add _AutoMatShader to name
+            shaderNodeName = self.rename_shader_if_exists(
+                shaderNodeName, '_AutoMatShader')
+            # TODO add _AutoMatShader to name
 
             # setup shader
             newShader = nodes.arnoldPBRShader(shaderNodeName)
@@ -431,6 +432,7 @@ class autoMat(object):
 
     def delUnusedNodes(self):
         mel.eval('MLdeleteUnused;')
+        mel.eval('scriptEditorInfo -clearHistory;')
 
     def getType(self, name: str):
         """
@@ -557,7 +559,21 @@ class autoMat(object):
         counter = 1  # init counter
 
         if cmds.objExists(node_name):
+
             while cmds.objExists(node_name + str(counter)):
+                counter += 1
+
+            return node_name + str(counter)
+        else:
+
+            return node_name
+
+    def rename_shader_if_exists(self, node_name: str, suffix: str = '_AutoMatShader'):
+        counter = 1  # init counter
+
+        if cmds.objExists(node_name + suffix):
+
+            while cmds.objExists(node_name + str(counter) + suffix):
                 counter += 1
 
             return node_name + str(counter)
