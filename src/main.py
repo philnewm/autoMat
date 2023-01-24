@@ -245,7 +245,6 @@ class autoMat(object):
             print(shaderNodeName)
             shaderNodeName = self.rename_shader_if_exists(
                 shaderNodeName, '_AutoMatShader')
-            # TODO add _AutoMatShader to name
 
             # setup shader
             newShader = nodes.arnoldPBRShader(shaderNodeName)
@@ -547,7 +546,6 @@ class autoMat(object):
 
 # TODO !!!CREATE NEW NODE CLASS TO HANDLE ALL SPECIAL EXCEPTIONS!!!
 
-    # Maya converts special characters to lower case, need to do that here as well
     def replaceSpecialChars(self, input_string: str, replaceCharList: list, replaceChar):
         for item in replaceCharList:
             input_string = input_string.replace(item, replaceChar)
