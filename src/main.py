@@ -103,6 +103,7 @@ class autoMat(object):
         self.delPrevSpheres()
         moveStep = 0
         columns = round(sqrt(len(self.dataDict.keys())))
+        shaderNameOffset = 1
 
         if not cmds.objExists(self.grpName):
             cmds.group(empty=True, name=self.grpName)
@@ -112,19 +113,42 @@ class autoMat(object):
         for key, value in self.dataDict.items():
             self.texTypeList.clear()
 
+            # remove spaces , dots and "-" from node name
+            shaderNodeName = self.replaceSpecialChars(
+                os.path.split(key)[1], self.specialCharsList, "_")
+
+            # add number to name and increment if node exists
+            shaderNodeName = self.rename_shader_if_exists(
+                shaderNodeName, '_AutoMatShader')
+
             # setup shader
-            shaderNodeName = os.path.split(key)[1]
             newShader = nodes.arnoldPBRShader(shaderNodeName)
 
             # assign to preview mesh
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
                                      (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
             moveStep += 1
+            colorNodeNameOffset = 1
+            metalNodeNameOffset = 1
+            roughNodeNameOffset = 1
+            transNodeNameOffset = 1
+            sssNodeNameOffset = 1
+            emissNodeNameOffset = 1
+            opacityNodeNameOffset = 1
+            normalNodeNameOffset = 1
+            dispNodeNameOffset = 1
             self.orgSphere = newShader.geoName
 
             for v in value:
                 texNodeName, texFilePath, texType, texFileType = self.extractData(
                     key, v)
+
+                # remove spaces , dots and "-" from node name
+                texNodeName = self.replaceSpecialChars(
+                    texNodeName, self.specialCharsList, "_")
+
+                # add number to name and increment if node exists
+                texNodeName = self.rename_if_exists(texNodeName)
 
                 self.prevTexType = self.curTexType
                 self.curTexType = texType
@@ -132,64 +156,80 @@ class autoMat(object):
                 # NEWFEATURE use loop for each shader channel
                 if texType == 'color':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevColor)
                         continue
                     else:
+                        self.prevColor = texNodeName
                         newShader.setupTripColor(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'metalness':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevMetal)
                         continue
                     else:
+                        self.prevMetal = texNodeName
                         newShader.setupTripMetalness(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'roughness':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevRough)
                         continue
                     else:
+                        self.prevRough = texNodeName
                         newShader.setupTripRoughness(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'transmission':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevTransmission)
                         continue
                     else:
+                        self.prevTransmission = texNodeName
                         newShader.setupTripTransmiss(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'sss':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevSSS)
                         continue
                     else:
+                        self.prevSSS = texNodeName
                         newShader.setupTripSSS(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'emissive':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevEmissive)
                         continue
                     else:
-                        newShader.setupTripTransmission(
+                        self.prevEmissive = texNodeName
+                        newShader.setupTripTransmiss(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'opacity':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevOpacity)
                         continue
                     else:
+                        self.prevOpacity = texNodeName
                         newShader.setupTripOpacity(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
                 elif texType == 'normal':
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevNormal)
                         continue
                     else:
+                        self.prevNormal = texNodeName
                         newShader.setupTripNormal(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
@@ -202,13 +242,15 @@ class autoMat(object):
                         zeroScaleValue = 0.5
 
                     if texType in self.texTypeList:
+                        self.change_to_UDIM(self.prevDisp)
                         continue
                     else:
+                        self.prevDisp = texNodeName
                         newShader.setupTripDisplacement(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale, zeroScaleValue, self.dispHeight)
                         self.texTypeList.append(texType)
 
-            # renable when all working
+            # TODO renable when all working
             try:
                 mel.eval(
                     'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
@@ -242,12 +284,12 @@ class autoMat(object):
                 os.path.split(key)[1], self.specialCharsList, "_")
 
             # add number to name and increment if node exists
-            print(shaderNodeName)
             shaderNodeName = self.rename_shader_if_exists(
                 shaderNodeName, '_AutoMatShader')
 
             # setup shader
             newShader = nodes.arnoldPBRShader(shaderNodeName)
+
             # assign to preview mesh
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
                                      (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)

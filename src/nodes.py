@@ -520,7 +520,7 @@ class arnoldPBRShader(object):
                        texType, csDefaults, )
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
-        triplanar.connectColor(tex.ColorOut, self.opacity)
+        triplanar.connectColor(tex.colorOut, self.opacity)
 
     # TODO needs separation between emission and emission color
 
