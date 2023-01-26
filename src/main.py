@@ -56,6 +56,7 @@ class autoMat(object):
         self.prevCoat = None
         self.prevSheen = None
 
+        # TODO try ro remove cause default values should be definied through UI
         # displacement values
         self.dispSubdivs = 3
         self.dispHeight = 1.0
@@ -64,6 +65,7 @@ class autoMat(object):
         self.triScale = 0.65
         self.triBlend = 1
 
+        # TODO implement button forthis one
         self.removeEmptyGroups()
 
         if not cmds.objExists(self.grpName):
@@ -82,7 +84,6 @@ class autoMat(object):
                          'coat': ('coat', ),
                          'sheen': ('sheen', )}
 
-        # TODO remove LODs from here
         # NEWFEATURE implement clean LOD handling
         # README no LOD handling yet
         self.ignoreList = ["^\.", "prev",
@@ -128,15 +129,6 @@ class autoMat(object):
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
                                      (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
             moveStep += 1
-            colorNodeNameOffset = 1
-            metalNodeNameOffset = 1
-            roughNodeNameOffset = 1
-            transNodeNameOffset = 1
-            sssNodeNameOffset = 1
-            emissNodeNameOffset = 1
-            opacityNodeNameOffset = 1
-            normalNodeNameOffset = 1
-            dispNodeNameOffset = 1
             self.orgSphere = newShader.geoName
 
             for v in value:
@@ -269,7 +261,6 @@ class autoMat(object):
         self.delPrevSpheres()
         moveStep = 0
         columns = round(sqrt(len(self.dataDict.keys())))
-        shaderNameOffset = 1
 
         if not cmds.objExists(self.grpName):
             cmds.group(empty=True, name=self.grpName)
@@ -294,15 +285,6 @@ class autoMat(object):
             newShader.assigntoSphere(-2 * (moveStep % columns), 0,
                                      (moveStep // columns) * 2, showInVP, self.orgSphere, dispSubdivs=self.dispSubdivs, dispHeight=self.dispHeight)
             moveStep += 1
-            colorNodeNameOffset = 1
-            metalNodeNameOffset = 1
-            roughNodeNameOffset = 1
-            transNodeNameOffset = 1
-            sssNodeNameOffset = 1
-            emissNodeNameOffset = 1
-            opacityNodeNameOffset = 1
-            normalNodeNameOffset = 1
-            dispNodeNameOffset = 1
             self.orgSphere = newShader.geoName
 
             for v in value:
@@ -417,7 +399,7 @@ class autoMat(object):
                             texNodeName, texFilePath, texType, self.csDefaults, zeroScaleValue, self.dispHeight)
                         self.texTypeList.append(texType)
 
-        # TODO renable when all working
+        # TODO create checkbox for this one
         try:
             mel.eval(
                 'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
@@ -472,6 +454,9 @@ class autoMat(object):
             print("No Objects to delete")
 
     def delUnusedNodes(self):
+        """
+        delete all unused nodes using UI fucntion from hypershade
+        """
         mel.eval('MLdeleteUnused;')
         mel.eval('scriptEditorInfo -clearHistory;')
 
@@ -495,12 +480,21 @@ class autoMat(object):
 
     # use the ignore list
     def check_for_wrong_type(self, ignore_list: list, search_string: str):
-        pattern_list = ignore_list
+        """
+        Search for string patterns to ignore
+
+        Args:
+            ignore_list (list): list containing strings to ignore
+            search_string (str): current string to evaluate
+
+        Returns:
+            _type_: True if any character combination mathcing the ignore list was found, False if not
+        """
 
         ignore_string = '('
         separator = '|'
 
-        for item in pattern_list:
+        for item in ignore_list:
             ignore_string += item + separator
 
         pattern = re.compile(ignore_string[:-1] + ')', re.IGNORECASE)
@@ -510,6 +504,9 @@ class autoMat(object):
     def findFiles(self, dataPath):
         """
         Walks down the given directory path and searches for files within each directory while creating a dictionary of all found directories and files.
+
+        Args:
+            datapath (str): folder path to start recursive search
         """
         # BUG self.dataDict.clear() # doesn't work when recursion is used
         acceptedFilesList = ['exr', 'tga', 'tiff', 'tif', 'png', 'jpg', 'jpeg', 'bmp', 'ico', 'jng', 'pbm',
@@ -565,6 +562,13 @@ class autoMat(object):
             self.findFiles(os.path.join(dataPath, dir))
 
     def change_to_UDIM(self, nodeName: str):
+        """
+        Replace 4 combined digits with <udim> tag if multiple texture files per channel are found
+
+        Args:
+            nodeName (str): file node name
+        """
+
         # import images as UDIMs
         imagePath = cmds.getAttr(nodeName + '.filename')
         udim = re.search(r'\d{4}', os.path.split(imagePath)[1])
@@ -589,13 +593,34 @@ class autoMat(object):
 # TODO !!!CREATE NEW NODE CLASS TO HANDLE ALL SPECIAL EXCEPTIONS!!!
 
     def replaceSpecialChars(self, input_string: str, replaceCharList: list, replaceChar):
+        """
+        Replace all scpecial characters from replaceCharList found in inoput_string.
+
+        Args:
+            input_string (str): String to check for special characters
+            replaceCharList (list): list of characters to replace
+            replaceChar (_type_): new character to replace it with
+
+        Returns:
+            _type_: string without special characters
+        """
         for item in replaceCharList:
             input_string = input_string.replace(item, replaceChar)
 
         logger.debug(f"Converted string: {input_string}")
         return input_string
 
-    def rename_if_exists(self, node_name):
+    def rename_if_exists(self, node_name: str):
+        """
+        Check if node_name already exists in the running maya instance
+        Add counter to name in case node_name already exists
+
+        Args:
+            node_name (str): string to check against current maya instance
+
+        Returns:
+            str: input string as is or string with added counter
+        """
         counter = 1  # init counter
 
         if cmds.objExists(node_name):
@@ -609,6 +634,18 @@ class autoMat(object):
             return node_name
 
     def rename_shader_if_exists(self, node_name: str, suffix: str = '_AutoMatShader'):
+        """
+        Check if node_name already exists as shader node name in the running maya instance
+        Add counter to name in case node_name already exists
+        Is also able to use a suffix for shader node name identification
+
+        Args:
+            node_name (str): string to check against current maya instance
+            suffix (str): string to add to shader node name
+
+        Returns:
+            str: input string as is or string with added counter
+        """
         counter = 1  # init counter
 
         if cmds.objExists(node_name + suffix):
