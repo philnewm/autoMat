@@ -202,7 +202,7 @@ class autoMat(object):
                         continue
                     else:
                         self.prevEmissive = texNodeName
-                        newShader.setupTripTransmiss(
+                        newShader.setupTripEmission(
                             texNodeName, texFilePath, texType, self.csDefaults, self.triBlend, self.triScale)
                         self.texTypeList.append(texType)
 
