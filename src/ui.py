@@ -326,11 +326,14 @@ class AutoMatUI(QtWidgets.QWidget):
         dialog.setWindowTitle('Choose texture folder')
         dialog.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, True)
         dialog.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
-        self.autoMat.dataPath = dialog.getExistingDirectory()
+        path = dialog.getExistingDirectory()
+        if path:
+            self.autoMat.dataPath = path
+
         # TODO cleaner method for dataDict clearing needed
         self.autoMat.dataDict.clear()
+        # TODO if non selected use default one again
         self.autoMat.findFiles(self.autoMat.dataPath)
-        print(self.autoMat.dataDict)
         self.populate()
 
     def updatePath(self):

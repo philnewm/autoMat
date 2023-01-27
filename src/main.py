@@ -19,7 +19,7 @@ reload(nodes)  # TODO only for WIP with maya to make sure all changes get reload
 
 logging.basicConfig()
 logger = logging.getLogger('AutoMat')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class autoMat(object):
@@ -512,15 +512,12 @@ class autoMat(object):
         acceptedFilesList = ['exr', 'tga', 'tiff', 'tif', 'png', 'jpg', 'jpeg', 'bmp', 'ico', 'jng', 'pbm',
                              'pgm', 'ppm', 'wbmp', 'xpm', 'gif', 'hdr', 'j2k', 'jp2', 'pfm', 'webp', 'jpeg-xr', 'psd']
 
-        try:
-            os.path.exists(dataPath)
-        except:
-            raise ("choosen path does not exist")
-        try:
+        if os.path.exists(dataPath):
             names = os.listdir(dataPath)
-        except:
-            print(
-                f"ERROR: path does not exist {dataPath}")
+            logger.debug(f"Found directories: {names} in path: {dataPath}")
+        else:
+            logger.warning("Given Path does not exist!")
+            return
 
         texList = []
         dirList = []
