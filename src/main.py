@@ -657,3 +657,11 @@ class autoMat(object):
         else:
 
             return node_name
+
+    def check_arnold(self, test_string):
+        nodes_ = cmds.allNodeTypes()
+
+        if test_string in nodes_:
+            return True
+        else:
+            return False

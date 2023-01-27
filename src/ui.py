@@ -356,16 +356,23 @@ class AutoMatUI(QtWidgets.QWidget):
         """
         Start the pbr material setup method from autoMat
         """
-        if self.triplanar:
-            self.setTripScale()
-            self.setTripBlend()
-            self.setDispSubdiv()
-            self.setDisplacementHeight()
-            self.autoMat.setupMaterialTrip()
+        if self.autoMat.check_arnold('aiStandardSurface'):
+            if self.triplanar:
+                self.setTripScale()
+                self.setTripBlend()
+                self.setDispSubdiv()
+                self.setDisplacementHeight()
+                self.autoMat.setupMaterialTrip()
+            else:
+                self.setDispSubdiv()
+                self.setDisplacementHeight()
+                self.autoMat.setupMaterial(showInVP=self.showInVP)
         else:
-            self.setDispSubdiv()
-            self.setDisplacementHeight()
-            self.autoMat.setupMaterial(showInVP=self.showInVP)
+            msg = QtWidgets.QMessageBox()
+            msg.setWindowTitle("Arnold not loaded")
+            msg.setText(
+                "Please load the 'MtoA' Plugin!\nPlease go to\n Windows->Settings->Plug-in Manager")
+            x = msg.exec_()
 
     def delSpheres(self):
         self.autoMat.delPrevSpheres()
