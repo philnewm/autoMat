@@ -267,11 +267,17 @@ class AutoMatUI(QtWidgets.QWidget):
 
         # TODO button to hide spheres
 
-        matResetBtn = QtWidgets.QPushButton('Remove Spheres')
-        matResetBtn.setStyleSheet("font-size: 11pt")
-        matResetBtn.setToolTip("remove all created preview spheres")
-        matResetBtn.clicked.connect(self.resetMats)
-        btnLayout.addWidget(matResetBtn)
+        delPrevSphereBtn = QtWidgets.QPushButton('Remove Spheres')
+        delPrevSphereBtn.setStyleSheet("font-size: 11pt")
+        delPrevSphereBtn.setToolTip("remove all created preview spheres")
+        delPrevSphereBtn.clicked.connect(self.delSpheres)
+        btnLayout.addWidget(delPrevSphereBtn)
+
+        delUnusedBtn = QtWidgets.QPushButton('Remove Unused Nodes')
+        delUnusedBtn.setStyleSheet("font-size: 11pt")
+        delUnusedBtn.setToolTip("remove all unused nodes from project")
+        delUnusedBtn.clicked.connect(self.delUnused)
+        btnLayout.addWidget(delUnusedBtn)
 
         closeBtn = QtWidgets.QPushButton('Close')
         closeBtn.setStyleSheet("font-size: 11pt")
@@ -320,9 +326,13 @@ class AutoMatUI(QtWidgets.QWidget):
         dialog.setWindowTitle('Choose texture folder')
         dialog.setOption(QtWidgets.QFileDialog.DontUseNativeDialog, True)
         dialog.setFileMode(QtWidgets.QFileDialog.DirectoryOnly)
-        self.autoMat.dataPath = dialog.getExistingDirectory()
+        path = dialog.getExistingDirectory()
+        if path:
+            self.autoMat.dataPath = path
+
         # TODO cleaner method for dataDict clearing needed
         self.autoMat.dataDict.clear()
+        # TODO if non selected use default one again
         self.autoMat.findFiles(self.autoMat.dataPath)
         self.populate()
 
@@ -344,25 +354,34 @@ class AutoMatUI(QtWidgets.QWidget):
 
     def setTripBlend(self):
         self.autoMat.triBlend = float(self.blendLineEdit.text())
-        print(self.autoMat.triBlend)
 
     def executeScript(self):
         """
         Start the pbr material setup method from autoMat
         """
-        if self.triplanar:
-            self.setTripScale()
-            self.setTripBlend()
-            self.setDispSubdiv()
-            self.setDisplacementHeight()
-            self.autoMat.setupMaterialTrip()
+        if self.autoMat.check_arnold('aiStandardSurface'):
+            if self.triplanar:
+                self.setTripScale()
+                self.setTripBlend()
+                self.setDispSubdiv()
+                self.setDisplacementHeight()
+                self.autoMat.setupMaterialTrip()
+            else:
+                self.setDispSubdiv()
+                self.setDisplacementHeight()
+                self.autoMat.setupMaterial(showInVP=self.showInVP)
         else:
-            self.setDispSubdiv()
-            self.setDisplacementHeight()
-            self.autoMat.setupMaterial(showInVP=self.showInVP)
+            msg = QtWidgets.QMessageBox()
+            msg.setWindowTitle("Arnold not loaded")
+            msg.setText(
+                "Please load the 'MtoA' Plugin!\nPlease go to\n Windows->Settings->Plug-in Manager")
+            x = msg.exec_()
 
-    def resetMats(self):
-        self.autoMat.cleanUp()
+    def delSpheres(self):
+        self.autoMat.delPrevSpheres()
+
+    def delUnused(self):
+        self.autoMat.delUnusedNodes()
 
     def clearList(self):
         self.autoMat.dataDict.clear()

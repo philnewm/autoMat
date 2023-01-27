@@ -42,6 +42,7 @@ class FileNode(object):
         self.texType = texType
         self.name = None
         self.enableAutoTX = enableAutoTX
+        self.ignoreMissingTex = True
 
         self.colorOut = self.nodeName + '.outColor'
         self.redColorOut = self.nodeName + '.outColor.outColorR'
@@ -58,42 +59,40 @@ class FileNode(object):
         Returns:
             _type_: _description_
         """
-        # check which file node to create
-        print(self.renderEngine)
+        # NEWFEATURE check render engine and create corresponding file node
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
-            # create file node
-            self.name = cmds.shadingNode(
-                self.imageNode, name=self.nodeName, asTexture=True, isColorManaged=True)
-
         else:
             self.imageNode = 'file'  # TODO check for correct naming
+
+        # create file node
+        counter = 1
+        if cmds.objExists(self.nodeName):
+            while cmds.objExists(self.nodeName + str(counter)):
+                counter += 1
+
+            self.nodeName += str(counter)
+
+        else:
+            self.name = cmds.shadingNode(
+                self.imageNode, name=self.nodeName, asTexture=True, isColorManaged=True)
 
         logger.debug(f"file node: {self.imageNode}")
         return self.nodeName
 
     def loadImage(self):
-        # import image
-        # if self.udim:
-        #     # TODO check if only 1001 udim available (fake udim)
-        #     udim_sequence = self.udim.group(0)
-        #     udim_sequence = self.filePath.replace(udim_sequence, '<udim>')
-
-        #     cmds.setAttr(self.nodeName + '.filename',
-        #                  udim_sequence, type='string')
-        #     logger.info(
-        #         f"image imported: {udim_sequence}, auto tx: {self.enableAutoTX}")
-        #     return
-
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
         cmds.setAttr(self.nodeName + '.autoTx', self.enableAutoTX)
+        cmds.setAttr(self.nodeName + '.ignoreMissingTextures',
+                     self.ignoreMissingTex)
 
         logger.info(
             f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
-    def setColorSpace(self):  # TODO add custom input method
-        if self.texType == 'color':
+    def setColorSpace(self):  # NEWFEATURE add custom input method
+        # check if .exr files or not and use all as utility raw or not
+        if self.texType == 'color' and os.path.splitext(os.path.split(self.filePath)[1])[1][1:] != "exr":
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.col_cs, type='string')
             self.colorSpace = self.col_cs
@@ -128,11 +127,11 @@ class TriPlanarNode(object):
                 'aiTriplanar', name=self.nodeName, asTexture=True)
             cmds.setAttr(self.blend, self.blendValue)
         if self.renderEngine == 'vray':
-            # TODO  check vray triplanar
+            # TODO check vray triplanar
             pass
 
         if self.renderEngine == 'redshift':
-            # TODO  check redshift triplanar
+            # TODO check redshift triplanar
             pass
 
         logger.debug(f"Triplanar node: {self.triPlanar}")
@@ -227,7 +226,7 @@ class DisplacementNode(object):
         self.createNode()
 
     def createNode(self):
-        # TODO check if different nodes for other render engines
+        # NEWFEATURE check if different nodes for other render engines
         self.dispNode = cmds.shadingNode(
             'displacementShader', name=self.nodeName, asShader=True)
         logger.debug(f"Node created: {self.dispNode}")
@@ -258,7 +257,7 @@ class arnoldPBRShader(object):
         self.nodeName = nodeName
         self.geoName = nodeName + '_previewSphere_geo'
         self.shadNodeName = nodeName + '_AutoMatShader'
-        self.shadingGrpName = nodeName + '_shaGrp'
+        self.shadingGrpName = nodeName + '_ShadGrp'
         self.shadGrp = None
         self.colorOut = self.shadNodeName + '.outColor'
         self.baseCol = self.shadNodeName + '.baseColor'
@@ -350,7 +349,7 @@ class arnoldPBRShader(object):
         # check if already one created
         if orgSphere:
             logger.debug(f"OBJECT TO DUPLICATE: {orgSphere}")
-            self.prevSphere.duplicate(orgSphere)
+            cmds.duplicate(orgSphere, name=self.geoName)
         else:
             self.prevSphere.createNodeWithUdims()
             self.prevSphere.setupDisplacement()
@@ -521,7 +520,7 @@ class arnoldPBRShader(object):
                        texType, csDefaults, )
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
-        triplanar.connectColor(tex.ColorOut, self.opacity)
+        triplanar.connectColor(tex.colorOut, self.opacity)
 
     # TODO needs separation between emission and emission color
 
@@ -636,7 +635,17 @@ class PrevSphere(object):
 
     def duplicate(self, prevName):
         cmds.duplicate(prevName)
-        cmds.rename(prevName + '1', self.nodeName)
+
+        counter = 1  # init counter
+
+        if cmds.objExists(prevName):
+            while cmds.objExists(prevName + str(counter)):
+                counter += 1
+
+            cmds.rename(prevName + str(counter), self.nodeName)
+        else:
+
+            cmds.rename(prevName, self.nodeName)
 
     def setupDisplacement(self):
         cmds.setAttr(self.shapeNodeName + '.aiSubdivType', 1)
