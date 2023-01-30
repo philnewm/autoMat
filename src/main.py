@@ -247,7 +247,7 @@ class autoMat(object):
                 mel.eval(
                     'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
             except (RuntimeError):
-                print("hypershade panel not yet created")
+                logger.warning("hypershade panel not yet created")
 
     # TODO find cleaner way to implement multiple materials setups
     # TODO use render engine spcific naming in shader
@@ -404,7 +404,7 @@ class autoMat(object):
             mel.eval(
                 'hyperShadePanelGraphCommand("hyperShadePanel1", "clearGraph");')
         except (RuntimeError):
-            print("hypershade panel not yet created")
+            logger.warning("hypershade panel not yet created")
 
     def removeEmptyGroups(self):
         """
@@ -451,7 +451,7 @@ class autoMat(object):
             if cmds.objExists(self.grpName):
                 cmds.delete(self.grpName)
         except ValueError:
-            print("No Objects to delete")
+            logger.warning("No Objects to delete")
 
     def delUnusedNodes(self):
         """
@@ -580,8 +580,8 @@ class autoMat(object):
                 logger.info(
                     f"image changed to udims: {udim_sequence}")
             except:
-                print(
-                    f"ERROR: Unable to setup up UDIMs for {imagePath}")
+                logger.warning(
+                    f"Unable to setup up UDIMs for {imagePath}")
             return
 
         logger.info(
