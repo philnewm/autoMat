@@ -32,7 +32,7 @@ AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically
    from autoMat.src import ui
    ui.AutoMatUI(dock=True)
    ```
-5. mark it and middle mouse drag into one of your shelves
+5. highlight it and middle mouse drag into one of your shelves
 6. click the created button and the UI should open up
 
 ## Developed and tested using
