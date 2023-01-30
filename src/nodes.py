@@ -1,60 +1,97 @@
-from distutils.log import debug
+# This code contains a bunch of wrapper classes + Methods
+# which can be used in a flexible way to automate more complex process
+# regarding the loading fo texture files and settings them up for a
+# PBR-workflow
+
+
 from maya import cmds
+from maya import mel
 import os
+import logging
+
+logging.basicConfig()
+logger = logging.getLogger('AutoMat')
+logger.setLevel(logging.INFO)
 
 
 class FileNode(object):
+    """
+    Create a filenode to use for texture import.
+    """
+
     def __init__(self, nodeName: str, imagePath: str, texType: str, csDefaults: tuple = (
-            "Input - Generic - sRGB - Texture", "Utility - Raw"), renderEngine: str = 'arnold', enableAutoTX: bool = True, debug: bool = False) -> None:
+            "Input - Generic - sRGB - Texture", "Utility - Raw"), renderEngine: str = 'arnold', enableAutoTX: bool = True) -> None:
+        """
+        All default variables for file node creation get assigned.
+
+        Args:
+            nodeName (str): Name for created file node 
+            imagePath (str): Filepath for image to load into file node
+            texType (str): Typ of texture (color, metal, roughness, ...)
+            csDefaults (tuple, optional): Default colorspace names for color and data images. Defaults to ( "Input - Generic - sRGB - Texture", "Utility - Raw").
+            renderEngine (str, optional): Render engine in use. Defaults to 'arnold'.
+            enableAutoTX (bool, optional): Switch creation of tx files for arnold on/off. Defaults to True.
+        """
+
         self.nodeName = nodeName
         self.filePath = imagePath
-        # TODO change for maya default aces
         self.col_cs, self.util_cs = csDefaults
         self.colorSpace = None
         self.renderEngine = renderEngine
         self.texType = texType
         self.name = None
         self.enableAutoTX = enableAutoTX
-        self.debug = debug
+        self.ignoreMissingTex = True
 
         self.colorOut = self.nodeName + '.outColor'
         self.redColorOut = self.nodeName + '.outColor.outColorR'
+
         if texType:
             self.createNode()
             self.loadImage()
             self.setColorSpace()
 
     def createNode(self):
-        # check which file node to create
-        print(self.renderEngine)
+        """
+        Create a filenode based on the selected renderengine.
+
+        Returns:
+            _type_: _description_
+        """
+        # NEWFEATURE check render engine and create corresponding file node
         if self.renderEngine == 'arnold':
             self.imageNode = 'aiImage'
-            # create file node
-            self.name = cmds.shadingNode(
-                self.imageNode, name=self.nodeName, asTexture=True, isColorManaged=True)
-
         else:
             self.imageNode = 'file'  # TODO check for correct naming
 
-        # maybe remove
-        if self.debug:
-            print(f"file node: {self.imageNode}")
+        # create file node
+        counter = 1
+        if cmds.objExists(self.nodeName):
+            while cmds.objExists(self.nodeName + str(counter)):
+                counter += 1
 
+            self.nodeName += str(counter)
+
+        else:
+            self.name = cmds.shadingNode(
+                self.imageNode, name=self.nodeName, asTexture=True, isColorManaged=True)
+
+        logger.debug(f"file node: {self.imageNode}")
         return self.nodeName
 
     def loadImage(self):
-        # import image
         cmds.setAttr(self.nodeName + '.filename',
                      self.filePath, type='string')
         cmds.setAttr(self.nodeName + '.autoTx', self.enableAutoTX)
+        cmds.setAttr(self.nodeName + '.ignoreMissingTextures',
+                     self.ignoreMissingTex)
 
-        if self.debug:
-            print(
-                f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
-        # TODO option for udims
+        logger.info(
+            f"image imported: {self.filePath}, auto tx: {self.enableAutoTX}")
 
-    def setColorSpace(self):
-        if self.texType == 'color':  # TODO remove double if
+    def setColorSpace(self):  # NEWFEATURE add custom input method
+        # check if .exr files or not and use all as utility raw or not
+        if self.texType == 'color' and os.path.splitext(os.path.split(self.filePath)[1])[1][1:] != "exr":
             cmds.setAttr(self.nodeName + '.colorSpace',
                          self.col_cs, type='string')
             self.colorSpace = self.col_cs
@@ -64,18 +101,16 @@ class FileNode(object):
             self.colorSpace = self.util_cs
 
         cmds.setAttr(self.nodeName + '.ignoreColorSpaceFileRules', 1)
-        if self.debug:
-            print(f"Texture Color conversion: {self.colorSpace}")
+        logger.debug(f"Texture Color conversion: {self.colorSpace}")
 
 
 class TriPlanarNode(object):
-    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, scale: float = 1.0, renderEngine: str = 'arnold', debug: bool = False) -> None:
+    def __init__(self, nodeName: str = 'aiTriplanar', blend: float = 0.5, scale: float = 1.0, renderEngine: str = 'arnold') -> None:
         self.blendValue = blend
         self.renderEngine = renderEngine
         self.nodeName = nodeName + '_trip'
         self.triPlanar = None
         self.dataIn = self.nodeName + '.input'
-        self.debug = debug
         self.outColor = self.nodeName + '.outColor'
         self.outColorRed = self.outColor + '.outColorR'
         self.blend = self.nodeName + '.blend'
@@ -91,15 +126,14 @@ class TriPlanarNode(object):
                 'aiTriplanar', name=self.nodeName, asTexture=True)
             cmds.setAttr(self.blend, self.blendValue)
         if self.renderEngine == 'vray':
-            # TODO  check vray triplanar
+            # TODO check vray triplanar
             pass
 
         if self.renderEngine == 'redshift':
-            # TODO  check redshift triplanar
+            # TODO check redshift triplanar
             pass
 
-        if self.debug:
-            print(f"Triplanar node: {self.triPlanar}")
+        logger.debug(f"Triplanar node: {self.triPlanar}")
 
         return self.nodeName
 
@@ -107,8 +141,7 @@ class TriPlanarNode(object):
         self.blendValue = blend
         cmds.setAttr(self.blend, self.blendValue)
 
-        if self.debug:
-            print(f"changed blend value to: {self.blendValue}")
+        logger.debug(f"changed blend value to: {self.blendValue}")
 
     def setScale(self):
         cmds.setAttr(self.nodeName + '.scaleX', self.scale)
@@ -120,39 +153,34 @@ class TriPlanarNode(object):
                          self.dataIn, force=True)
         cmds.connectAttr(self.outColor, output, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input and {output} as output")
+        logger.info(f"connected {input} as input and {output} as output")
 
     def connectData(self, input, output):  # very spaghetti
         cmds.connectAttr(input,
                          self.dataIn, force=True)
         cmds.connectAttr(self.outColorRed, output, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input and {output} as output")
+        logger.info(f"connected {input} as input and {output} as output")
 
     def connectIn(self, input):
         cmds.connectAttr(input, self.dataIn, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input to {self.dataIn}")
+        logger.info(f"connected {input} as input to {self.dataIn}")
 
     def connectOut(self, output):
         cmds.connectAttr(self.outColor, output, force=True)
 
-        if self.debug:
-            print(f"connected {self.outColor} as input to {output}")
+        logger.info(f"connected {self.outColor} as input to {output}")
 
 
 class NormalMapNode(object):
-    def __init__(self, nodeName: str = 'aiNormalMap', normalStrength: float = 1.0, renderEngine: str = 'arnold', debug: bool = False) -> None:
+    def __init__(self, nodeName: str = 'aiNormalMap', normalStrength: float = 1.0, renderEngine: str = 'arnold') -> None:
         self.nodeName = nodeName + '_aiNormalMap'
         self.strength = normalStrength
         self.normalNode = None
         self.renderEngine = renderEngine
         self.normalOut = self.nodeName + '.outValue'
         self.dataIn = self.nodeName + '.input'
-        self.debug = debug
 
         self.createNode()
 
@@ -163,127 +191,174 @@ class NormalMapNode(object):
         else:
             pass
 
-        print(f"NormalMap Node created: {self.normalNode}")
+        logger.debug(f"NormalMap Node created: {self.normalNode}")
 
     def setStrength(self):
-        pass
+        cmds.setAttr(self.nodeName + '.strength', self.strength)
+        logger.debug(f"set {input} strength to {self.strength}")
 
-    # TODO move connection to builder, only output connection name
     def connect(self, input, output):
         cmds.connectAttr(input, self.dataIn, force=True)
         cmds.connectAttr(self.normalOut, output, force=True)
-        if self.debug:
-            print(f"connected {input} as input and {output} as output")
+        logger.info(f"connected {input} as input and {output} as output")
 
     def connectIn(self, input):
         cmds.connectAttr(input, self.dataIn, force=True)
 
-        if self.debug:
-            print(f"connected {input} as input to {self.dataIn}")
+        logger.info(f"connected {input} as input to {self.dataIn}")
 
     def connectOut(self, output):
         cmds.connectAttr(self.normalOut, output, force=True)
 
-        if self.debug:
-            print(f"connected {self.normalOut} as input to {output}")
+        logger.info(f"connected {self.normalOut} as input to {output}")
 
 
 class DisplacementNode(object):
-    def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1, debug: bool = False) -> None:
+    def __init__(self, nodeName: str = 'dispalacementShader', scale: int = 1) -> None:
         self.nodeName = nodeName + '_dispShader'
         self.scale = scale
         self.dispNode = None
         self.dispIn = self.nodeName + '.displacement'
         self.dispOut = self.nodeName + '.displacement'
-        self.debug = debug
 
         # execute default methods
         self.createNode()
 
     def createNode(self):
-        # TODO check if different nodes for other render engines
+        # NEWFEATURE check if different nodes for other render engines
         self.dispNode = cmds.shadingNode(
             'displacementShader', name=self.nodeName, asShader=True)
-        print(f"Node created: {self.dispNode}")
+        logger.debug(f"Node created: {self.dispNode}")
 
     def setScale(self):
         cmds.setAttr(self.dispNode + '.scale', self.scale)
+        logger.debug(f"Set {self.nodeName} scale to {self.scale}")
 
     def connect(self, input: str, output: str):
         cmds.connectAttr(input,
                          self.dispIn, force=True)
         cmds.connectAttr(self.dispOut, output, force=True)
-        if self.debug:
-            print(
-                f"connected: {input} as input and {output} as output")
+        logger.info(f"connected: {input} as input and {output} as output")
 
     def connectIn(self, input: str):
         cmds.connectAttr(input,
                          self.dispIn, force=True)
-        if self.debug:
-            print(
-                f"connected: {input} as input to {self.dispIn}")
+        logger.info(f"connected: {input} as input to {self.dispIn}")
 
     def connectOut(self, output: str):
         cmds.connectAttr(self.dispOut, output,
                          force=True)
-        if self.debug:
-            print(
-                f"connected: {self.dispOut} as input to {output}")
+        logger.info(f"connected: {self.dispOut} as input to {output}")
 
 
 class arnoldPBRShader(object):
-    def __init__(self, nodeName: str = 'PBRShader', debug: bool = False) -> None:
+    def __init__(self, nodeName: str = 'PBRShader') -> None:
         self.nodeName = nodeName
-        self.shadingGrpName = nodeName + '_shaGrp'
+        self.geoName = nodeName + '_previewSphere_geo'
+        self.shadNodeName = nodeName + '_AutoMatShader'
+        self.shadingGrpName = nodeName + '_ShadGrp'
         self.shadGrp = None
-        self.colorOut = nodeName + '.outColor'
-        self.baseCol = self.nodeName + '.baseColor'
-        self.metal = self.nodeName + '.metalness'
-        self.rough = self.nodeName + '.specularRoughness'
-        self.normal = self.nodeName + '.normalCamera'
+        self.colorOut = self.shadNodeName + '.outColor'
+        self.baseCol = self.shadNodeName + '.baseColor'
+        self.metal = self.shadNodeName + '.metalness'
+        self.rough = self.shadNodeName + '.specularRoughness'
+        self.transmiss = self.shadNodeName + '.transmission'
+        self.sss = self.shadNodeName + '.subsurface'
+        self.emission = self.shadNodeName + '.emissionColor'
+        self.opacity = self.shadNodeName + '.opacity'
+        self.normal = self.shadNodeName + '.normalCamera'
+        self.udimFlag = False
 
         cmds.shadingNode('aiStandardSurface',
-                         name=self.nodeName, asShader=True)
+                         name=self.shadNodeName, asShader=True)
 
     # Methods to connect textures to shader channels
     def connColor(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.baseCol, force=True)
 
+        logger.info(
+            f"connected: {inputConnection} as input to {self.baseCol}")
+
     def connMetal(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.metal, force=True)
+
+        logger.info(f"connected: {inputConnection} as input to {self.metal}")
 
     def connRough(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.rough, force=True)
 
+    def connTransmiss(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.transmiss, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.transmiss}")
+
+    def connSSS(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.sss, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.sss}")
+
+    def connEmission(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.emission, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.emission}")
+
+    def connOpacity(self, inputConnection):
+        cmds.connectAttr(inputConnection,
+                         self.opacity, force=True)
+
+        logger.info(
+            f"connected: {inputConnection} as input to {self.opacity}")
+
     def connNormal(self, inputConnection):
         cmds.connectAttr(inputConnection,
                          self.normal, force=True)
 
+        logger.info(f"connected: {inputConnection} as input to {self.baseCol}")
+
     def connColOut(self, output):
         cmds.connectAttr(self.colorOut, output, force=True)
 
-    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, debug: bool = False):
+        logger.info(f"connected: {self.colorOut} as input to {output}")
+
+    def assigntoSphere(self, translateX: float = 0.0, translateY: float = 0.0, translateZ: float = 0.0, dispInVP=True, orgSphere: list = [], grpName: str = 'Preview_Spheres_grp', dispSubdivs: int = 3, dispHeight: float = 0.05):
 
         # create shading group
         self.shadGrp = ShadingGroup(
-            self.shadingGrpName, debug=debug)
+            self.shadingGrpName)
         self.shadingGrpName = self.shadGrp.nodeName
+        self.grpName = grpName
 
         # connect shading group
         self.connColOut(self.shadGrp.aiSurfaceShaderInput)
         if dispInVP:
             self.connColOut(self.shadGrp.surfaceShaderInput)
-
         # create preview sphere
-        prevSphere = PrevSphere(
-            self.nodeName, 3, dispHeight=0.1)
+        self.prevSphere = PrevSphere(
+            self.geoName, dispSubdivs, dispHeight=dispHeight)
+
+        # check if already one created
+        if orgSphere:
+            logger.debug(f"OBJECT TO DUPLICATE: {orgSphere}")
+            cmds.duplicate(orgSphere, name=self.geoName)
+        else:
+            self.prevSphere.createNodeWithUdims()
+            self.prevSphere.setupDisplacement()
+            # group all preview spheres together
+            cmds.parent(self.geoName, self.grpName)
+
+        self.prevSphere.moveOver(translateX, translateY, translateZ)
+
         # assign Shader
-        prevSphere.assignShader(self.nodeName)
-        prevSphere.moveOver(translateX, translateY, translateZ)
+        self.prevSphere.assignShader(self.shadNodeName)
 
     def setupTripColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
         """
@@ -299,14 +374,16 @@ class arnoldPBRShader(object):
         """
 
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults)
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectColor(tex.colorOut, self.baseCol)
 
+        logger.info(f"connected: {tex.colorOut} as input to {self.baseCol}")
+
     def setupColor(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults)
         self.connColor(tex.colorOut)
 
     def setupTripMetalness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
@@ -322,14 +399,14 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults)
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, self.metal)
 
     def setupMetalness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         self.connMetal(tex.redColorOut)
 
     def setupTripRoughness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
@@ -345,15 +422,111 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, self.rough)
 
     def setupRoughness(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         self.connRough(tex.redColorOut)
+
+    def setupTripTransmiss(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the transmission texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, self.transmiss)
+
+    def setupTransmiss(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connTransmiss(tex.redColorOut)
+
+    def setupTripSSS(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the sss texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectData(tex.colorOut, self.sss)
+
+    def setupSSS(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connSSS(tex.redColorOut)
+
+    def setupTripEmission(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the emission texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectColor(tex.colorOut, self.emission)
+
+    # TODO needs separation between emission and emission color
+
+    def setupEmission(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connEmission(tex.colorOut)
+
+    def setupTripOpacity(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+        """
+        Sets up nodes to triplanar project the emission texture
+
+        Args:
+            texNodeName (str): Texture nodes name
+            texFilePath (str): Texture nodes file path
+            texType (str): Texture nodes type
+            csDefaults (_type_): Colorspace default value
+            triBlend (float, optional): Triplanar blending value. Defaults to 0.5.
+            triScale (float, optional): Triplanar scaling value. Defaults to 1.
+        """
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        triplanar = TriPlanarNode(
+            texNodeName, triBlend, triScale)
+        triplanar.connectColor(tex.colorOut, self.opacity)
+
+    # TODO needs separation between emission and emission color
+
+    def setupOpacity(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+        tex = FileNode(texNodeName, texFilePath,
+                       texType, csDefaults, )
+        self.connOpacity(tex.colorOut)
 
     def setupTripNormal(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
         """
@@ -368,7 +541,7 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         triplanar = TriPlanarNode(
             texNodeName, triBlend, triScale)
         normalMap = NormalMapNode(texNodeName)
@@ -377,11 +550,11 @@ class arnoldPBRShader(object):
 
     def setupNormal(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
+                       texType, csDefaults, )
         normalMap = NormalMapNode(texNodeName)
         normalMap.connect(tex.colorOut, self.normal)
 
-    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0):
+    def setupTripDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, triBlend: float = 0.5, triScale: float = 1.0, zeroScaleValue: float = 0.0, dispScale: float = 1.0):
         """
         Sets up nodes to triplanar project the displacement texture
 
@@ -394,21 +567,26 @@ class arnoldPBRShader(object):
             triScale (float, optional): Triplanar scaling value. Defaults to 1.
         """
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
-        dispNode = DisplacementNode(texNodeName, scale=1.0)
+                       texType, csDefaults, )
+        dispNode = DisplacementNode(texNodeName, scale=dispScale)
         triplanar = TriPlanarNode(texNodeName, triBlend, triScale)
         triplanar.connectData(tex.colorOut, dispNode.dispIn)
         cmds.connectAttr(dispNode.dispOut, self.shadGrp.displacementShaderIn)
+        cmds.setAttr(dispNode.nodeName +
+                     '.aiDisplacementZeroValue', zeroScaleValue)
 
-    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults):
+    def setupDisplacement(self, texNodeName: str, texFilePath: str, texType: str, csDefaults, zeroScaleValue: float = 0.0, dispScale: float = 1.0):
         tex = FileNode(texNodeName, texFilePath,
-                       texType, csDefaults, debug=True)
-        dispNode = DisplacementNode(texNodeName, scale=1.0)
+                       texType, csDefaults, )
+
+        dispNode = DisplacementNode(texNodeName, scale=dispScale)
         dispNode.connect(tex.redColorOut, self.shadGrp.displacementShaderIn)
+        cmds.setAttr(dispNode.nodeName +
+                     '.aiDisplacementZeroValue', zeroScaleValue)
 
 
 class ShadingGroup(object):
-    def __init__(self, nodeName, debug: bool = False) -> None:
+    def __init__(self, nodeName) -> None:
         self.nodeName = nodeName
         self.aiSurfaceShaderInput = self.nodeName + '.aiSurfaceShader'
         self.surfaceShaderInput = self.nodeName + '.surfaceShader'
@@ -421,6 +599,8 @@ class ShadingGroup(object):
         self.nodeName = cmds.sets(name=self.nodeName,
                                   renderable=True, noSurfaceShader=True, empty=True)
 
+        logger.debug(f"Created {self.nodeName}")
+
 
 class PrevSphere(object):
     """
@@ -428,21 +608,43 @@ class PrevSphere(object):
     """
 
     def __init__(self, nodeName: str = 'Preview_Sphere_geo', smoothSteps: int = 2, dispSubdivs: int = 3, tesselation: bool = True, dispHeight: float = 1.0) -> None:
-        self.nodeName = nodeName + '_previewSphere_geo'
+        self.nodeName = nodeName
+        self.sphere = 'preview_geo'
         self.shapeNodeName = self.nodeName + 'Shape'
         self.smoothSteps = smoothSteps
         self.dispSubdivs = dispSubdivs
         self.tess = tesselation
         self.dispHeight = dispHeight
-        self.dispPadding = 0.8 * dispHeight
+        self.dispPadding = 0.8 * dispHeight  # TODO get rid of hardcoded multiplier
 
-        # defaults
-        self.createNode()
-        self.setupDisplacement()
-
-    def createNode(self):
+    def createNodeWithUdims(self):
         cmds.polyCube(name=self.nodeName)
+        cmds.polyMapCut(self.nodeName + '.e[:]', constructionHistory=True)
+        mel.eval('u3dLayout -res 4096 -rot 1 -scl 1 -rmn 0 -rmx 360 -rst 90 -spc 0.0078125 -mar 0.0078125 -u 6 -box 0 1 0 1 ' +
+                 self.nodeName + '.f[0:6];')
         cmds.polySmooth(self.nodeName, divisions=self.smoothSteps)
+        # don't show while animation is palying
+        cmds.setAttr(self.nodeName + '.hideOnPlayback', 1)
+        # enable drawing overrides otherwise next line is not goona do anything
+        cmds.setAttr(self.nodeName + '.overrideEnabled', 1)
+        # set non selectable so user can't copy and delete by accident
+        cmds.setAttr(self.nodeName + '.overrideDisplayType', 2)
+
+        logger.debug(f"Created {self.nodeName} with UDIMs")
+
+    def duplicate(self, prevName):
+        cmds.duplicate(prevName)
+
+        counter = 1  # init counter
+
+        if cmds.objExists(prevName):
+            while cmds.objExists(prevName + str(counter)):
+                counter += 1
+
+            cmds.rename(prevName + str(counter), self.nodeName)
+        else:
+
+            cmds.rename(prevName, self.nodeName)
 
     def setupDisplacement(self):
         cmds.setAttr(self.shapeNodeName + '.aiSubdivType', 1)
@@ -462,49 +664,3 @@ class PrevSphere(object):
 
     def moveOver(self, x: float = 0.0, y: float = 0.0, z: float = 0.0):
         cmds.move(x, y, z, self.nodeName)
-
-
-# test code
-if __name__ == '__main__':
-    diffPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_diffuse.jpg"
-    metalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_metalness.jpg"
-    roughPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_roughness.jpg"
-    normalPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_normal.jpg"
-    dispPath = "sourceimages/textures/medieval_windows_29_73/medieval_windows_29_73_height.jpg"
-
-    # this ones nice
-    # dispFileNode = FileNode(path, debug=1)
-    # dispMapNode = DisplacementNode()
-    # dispMapNode.connect(dispFileNode.colorOut())
-    #
-    newShader = arnoldPBRShader(os.path.split(os.path.split(diffPath)[0])[1])
-    newDiffTex = FileNode('diffuse', diffPath, texType='color', debug=True)
-    newMetalTex = FileNode('metal', metalPath, texType='metal', debug=True)
-    newRoughTex = FileNode('roughness', roughPath,
-                           texType='roughness', debug=True)
-    newNormalTex = FileNode('normal', normalPath, texType='normal', debug=True)
-    newNormaMap = NormalMapNode(debug=True)
-    newDispTex = FileNode('displacement', dispPath,
-                          texType='displacement', debug=True)
-
-    triPlanarScale = 0.4
-    triPlanarBlend = 0
-
-    DiffTriplanar = TriPlanarNode('tri_01', triPlanarScale, triPlanarScale)
-    DiffTriplanar.connectColor(newDiffTex.colorOut, newShader.baseCol)
-    MetalTriplanar = TriPlanarNode('tri_02', triPlanarScale, triPlanarScale)
-    MetalTriplanar.connectData(newMetalTex.colorOut, newShader.metal)
-    RoughTriplanar = TriPlanarNode('tri_03', triPlanarScale, triPlanarScale)
-    RoughTriplanar.connectData(newRoughTex.colorOut, newShader.rough)
-    NormalTriplanar = TriPlanarNode('tri_04', triPlanarScale, triPlanarScale)
-    NormalTriplanar.connectColor(newNormalTex.colorOut, newNormaMap.dataIn)
-    newDispShader = DisplacementNode(debug=True)
-    DispTriplanar = TriPlanarNode('tri_05', triPlanarScale, triPlanarScale)
-    DispTriplanar.connectData(newDispTex.colorOut, newDispShader.dispIn)
-    newNormaMap.connectOut(newShader.normal)
-    newShadingGrp = ShadingGroup('preview_grp')
-    cmds.connectAttr(newShader.colorOut, newShadingGrp.aiSurfaceShaderInput)
-    newDispShader.connectOut(newShadingGrp.displacementShaderIn)
-
-    newPrevSphere = PrevSphere('Preview_Sphere_geo', dispHeight=0.1)
-    newPrevSphere.assignShader(newShader.nodeName)
