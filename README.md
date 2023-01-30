@@ -5,7 +5,7 @@ AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically
 Here is a video guide
 
 And the same as text
-1. Download .zip from [releases](https://github.com/philnewm/autoMat/releases/tag/v0.1-rc-beta-01)
+1. Download .zip from [releases](https://github.com/philnewm/autoMat/releases/latest)
 2. Extract .zip and rename to __autoMat__ 
 3. copy plugin folder
    + on Windows copy the __autoMat__ folder into the Documents Folder: `C:\<username>\Documents\maya\2022\scripts\`
