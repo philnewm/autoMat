@@ -19,6 +19,13 @@ And the same as text
 6. highlight it and middle mouse drag into one of your shelves
 7. click the created button and the UI should open up
 
+## How to use
+Video guide
+
+1. Setup one folder per material
+2. select a material fodler or group multiple material folders into one folder
+3. choose your settings for displacement and projection
+4. let it setup the materials for you
 
 ## Features
 + support for aiStandardSurfaceShader
