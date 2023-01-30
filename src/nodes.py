@@ -7,7 +7,6 @@
 from maya import cmds
 from maya import mel
 import os
-import re
 import logging
 
 logging.basicConfig()
