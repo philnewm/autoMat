@@ -23,7 +23,7 @@ text guide
 7. click the newly created button and the UI should open up
 
 ## How to use
-video guide
+[video guide](https://youtu.be/iAFwQD_hG4Q)
 
 text guide
 1. Setup one folder per material
