@@ -3,7 +3,7 @@ AutoMat is a plugin for Maya which creates __PBR-Material-Setups__ automatically
 __It's currently only working for Arnolds aiStandardSurface-Shader__
 
 ## Installation
-video guide
+[video guide](https://youtu.be/YQhrmUSLaAw)
 
 text guide
 1. Download .zip from [releases](https://github.com/philnewm/autoMat/releases/latest)
