@@ -10,9 +10,9 @@ text guide
 2. Extract .zip and rename to __autoMat__ if neccessary, folder name is important
 3. copy plugin folder
    + on Windows copy the __autoMat__ folder into the Documents folder:
-   `C:\<username>\Documents\maya\2022\scripts\`
+   ```C:\<username>\Documents\maya\2022\scripts\```
    + on Linux copy the __autoMat__ folder into the users home directory:
-   `/home/<username>/maya/2022/scripts/`
+   ```/home/<username>/maya/2022/scripts/```
 4. open Mayas script editor ans switch to a python tab
 5. paste this code into the python tab
    ```python
