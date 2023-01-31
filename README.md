@@ -27,7 +27,7 @@ video guide
 
 text guide
 1. Setup one folder per material
-2. select a material fodler or group multiple material folders into one folder
+2. select a material folder or group multiple material folders into one folder
 3. choose your settings for displacement and projection
 4. let it setup the materials for you, this may take some time, especially the first time
 
