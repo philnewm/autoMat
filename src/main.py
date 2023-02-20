@@ -3,7 +3,7 @@
 
 # only for WIP with maya to make sure all changes get reloaded
 import logging
-# from importlib import reload
+from importlib import reload
 
 from maya import cmds
 import maya.mel as mel
@@ -14,12 +14,12 @@ import re
 from autoMat.src import nodes
 # Only use when script gets executed from IDE
 # import nodes
-# reload(nodes)  # TODO only for WIP with maya to make sure all changes get reloaded
+reload(nodes)  # TODO only for WIP with maya to make sure all changes get reloaded
 
 
 logging.basicConfig()
 logger = logging.getLogger('AutoMat')
-logger.setLevel(logging.INFO)
+logger.setLevel(logging.DEBUG)
 
 
 class autoMat(object):
@@ -451,7 +451,7 @@ class autoMat(object):
             if cmds.objExists(self.grpName):
                 cmds.delete(self.grpName)
         except ValueError:
-            logger.warning("No objects to delete")
+            logger.warning("No Objects to delete")
 
     def delUnusedNodes(self):
         """
@@ -496,7 +496,7 @@ class autoMat(object):
 
         for item in ignore_list:
             ignore_string += item + separator
-
+            
         pattern = re.compile(ignore_string[:-1] + ')', re.IGNORECASE)
 
         return pattern.search(search_string.lower())
@@ -580,7 +580,8 @@ class autoMat(object):
                 logger.info(
                     f"image changed to udims: {udim_sequence}")
             except:
-                logger.warning(f"Unable to setup up UDIMs for {imagePath}")
+                logger.warning(
+                    f"Unable to setup up UDIMs for {imagePath}")
             return
 
         logger.info(

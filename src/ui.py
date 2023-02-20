@@ -1,7 +1,7 @@
 # Script starts Qt UI for all autoMat Methods from main.py
 
 # only for WIP with maya to make sure all changes get reloaded
-# from importlib import reload
+from importlib import reload
 from maya import cmds
 from maya import OpenMayaUI as omui
 import logging
@@ -18,7 +18,7 @@ from autoMat.src.Qt import QtWidgets, QtCore, QtGui
 from autoMat.src import main
 # Only use when script gets executed from IDE
 # import main
-# reload(main)  # only for WIP with maya to make sure all changes get reloaded
+reload(main)  # only for WIP with maya to make sure all changes get reloaded
 
 logging.basicConfig()
 logger = logging.getLogger('AutoMat')
