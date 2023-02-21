@@ -34,6 +34,13 @@ preview_shader = {'baseCol': ['baseColor', 'multi'],
 
 
 class VPPrevShaderNode(object):
+    """
+    _summary_
+
+    Args:
+        object (_type_): _description_
+    """
+
     def __init__(self, input_name: str = 'prev_shader', input_shader_type: str = 'standardSurface', shader_channels: dict = preview_shader) -> None:
         self.socket_connect = '.'
 
@@ -42,7 +49,6 @@ class VPPrevShaderNode(object):
         self.geo_name = self.node_name + '_previewSphere_geo'
 
         self.shader_node_name = self.node_name + '_AutoMatShader'
-        self.shading_grp_name = self.node_name + '_ShadGrp'
         self.shader_type = input_shader_type
 
         self.supported_channels = {'baseCol': '',
@@ -83,10 +89,10 @@ class ShadingGroup(object):
         # TODO check if corrects
         self.supported_channels = {'vp_surface': 'surfaceShader',
                                    'ai_surface': 'aiSurfaceShader',
-                                   'vr_surface': 'rsmaterialShader',
-                                   'rs_surface': 'vrmaterialShader',
+                                   'vr_surface': 'rsSurfaceShader',
+                                   'rs_surface': 'rsSurfaceShader',
                                    'displacement': 'displacementShader',
-                                   'rs_displacement': ''}
+                                   'rs_displacement': 'rsDisplacementShader'}
 
         for channel in self.supported_channels:
             self.supported_channels[channel] = self.node_name + \
@@ -107,12 +113,46 @@ class ShadingGroup(object):
         self.create_shading_grp_node()
 
     def create_shading_grp_node(self):
-        self.nodeName = cmds.sets(name=self.node_name,
-                                  renderable=True, noSurfaceShader=True, empty=True)
+        cmds.sets(name=self.node_name,
+                  renderable=True, noSurfaceShader=True, empty=True)
 
-        logger.info(f"Created shading group {self.nodeName}")
+        logger.info(f"Created shading group {self.node_name}")
+
+    def assignShader(self, shader: str):
+        cmds.select(self.nodeName, replace=True)
+        cmds.hyperShade(assign=shader)
+
+
+class PrevSphere(object):
+    def __init__(self, node_name) -> None:
+        self.node_name = node_name
+
+    def create_prev_sphere_with_udims(self, smooth_steps):
+        self.smooth_steps = smooth_steps
+        cmds.polyCube(name=self.node_name)
+        cmds.polyMapCut(self.node_name + '.e[:]', constructionHistory=True)
+        mel.eval('u3dLayout -res 4096 -rot 1 -scl 1 -rmn 0 -rmx 360 -rst 90 -spc 0.0078125 -mar 0.0078125 -u 6 -box 0 1 0 1 ' +
+                 self.node_name + '.f[0:6];')
+        cmds.polySmooth(self.node_name, divisions=self.smooth_steps)
+        # don't show while animation is palying
+        cmds.setAttr(self.node_name + '.hideOnPlayback', 1)
+        # enable drawing overrides otherwise next line is not goona do anything
+        cmds.setAttr(self.node_name + '.overrideEnabled', 1)
+        # set non selectable so user can't copy and delete by accident
+        cmds.setAttr(self.node_name + '.overrideDisplayType', 2)
+
+        logger.debug(f"Created {self.node_name} with UDIMs")
+
+    def duplicate(self, prevName):
+        counter = 1  # init counter
+        # rename if exists
+        # TODO handle with naming class instead
+        while cmds.objExists(prevName + str(counter)):
+            counter += 1
+        cmds.duplicate(prevName, name=prevName + str(counter))
 
 
 if __name__ == '__main__':
     # add testing code for this script file here
-    pass
+    newSphere = PrevSphere('prev_sphere')
+    newSphere.create_prev_sphere_with_udims(3)
