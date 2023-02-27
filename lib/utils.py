@@ -100,6 +100,11 @@ class data_loader(object):
         return pattern.search(search_string.lower())
 
 
+def delete_history(selection=None):
+    cmds.select(selection)
+    cmds.delete(constructionHistory=True)
+
+
 if __name__ == '__main__':
     # add testing code for this script file here
     pass

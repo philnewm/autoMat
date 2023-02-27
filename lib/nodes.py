@@ -30,7 +30,14 @@ preview_shader = {'baseCol': ['baseColor', 'multi'],
                   'emisCol': ['emissionColor', 'multi'],
                   'opacity': ['opacity', 'multi'],
                   'normal': ['normalCamera', 'multi'],
-                  'output': ['outColor', 'multi']}
+                  'output': ['outColor', 'multi'],
+                  }
+
+displacement_settings = {'subdivtype': 'aiSubdivType',
+                         'subdiviterations': 'aiSubdivIterations',
+                         'dispheight': 'aiDispHeight',
+                         'padding': 'aiDispPadding',
+                         }
 
 
 class VPPrevShaderNode(object):
@@ -51,25 +58,16 @@ class VPPrevShaderNode(object):
         self.shader_node_name = self.node_name + '_AutoMatShader'
         self.shader_type = input_shader_type
 
-        self.supported_channels = {'baseCol': '',
-                                   'metal': '',
-                                   'rough': '',
-                                   'opacity': '',
-                                   'normal': '',
-                                   'output': ''}
+        self.supported_channels = {}
+        self.supported_channels_list = [
+            'baseCol', 'metal', 'rough', 'opacity', 'normal', 'output']
 
-        self.get_shader_channels(shader_channels)
+        self.get_new_shader_channels(shader_channels)
 
-    def get_shader_channels(self, shader_channels: dict):
-        # for each supported shader channel
-        for channel in self.supported_channels:
-            # loop through all available shader channels
-            for shader_channel in shader_channels.keys():
-                # when matching pair is found add name as value
-                if channel == shader_channel:
-                    self.supported_channels[channel] = self.shader_node_name + \
-                        self.socket_connect + \
-                        shader_channels[shader_channel][0]
+    def get_new_shader_channels(self, shader_channels: dict):
+        for channel in self.supported_channels_list:
+            self.supported_channels[channel] = self.shader_node_name + \
+                self.socket_connect + shader_channels[channel][0]
 
         logger.debug(f'shader channels collected: {self.supported_channels}')
 
@@ -124,8 +122,9 @@ class ShadingGroup(object):
 
 
 class PrevSphere(object):
-    def __init__(self, node_name) -> None:
+    def __init__(self, node_name, disp_channel_list) -> None:
         self.node_name = node_name
+        self.shape_node = self.node_name + 'Shape'
 
     def create_prev_sphere_with_udims(self, smooth_steps):
         self.smooth_steps = smooth_steps
@@ -151,8 +150,29 @@ class PrevSphere(object):
             counter += 1
         cmds.duplicate(prevName, name=prevName + str(counter))
 
+    def get_displacement_settings(self):
+        # TODO check implementation for arnold
+        cmds.setAttr(self.shape_node + '.aiSubdivType', 1)
+        cmds.setAttr(self.shape_node +
+                     '.aiSubdivIterations', self.dispSubdivs)
+        cmds.setAttr(self.shape_node +
+                     '.aiDispHeight', self.dispHeight)
+        cmds.setAttr(self.shape_node +
+                     '.aiDispPadding', self.dispPadding)
+
+
+class ImageNode(object):
+    def __init__(self, node_name: str) -> None:
+        self.node_name = node_name
+
+    def create_image_node(self):
+        cmds.shadingNode('file', name=self.node_name,
+                         asTexture=True, isColorManaged=True)
+
 
 if __name__ == '__main__':
     # add testing code for this script file here
-    newSphere = PrevSphere('prev_sphere')
-    newSphere.create_prev_sphere_with_udims(3)
+    # newSphere = PrevSphere('prev_sphere')
+    # newSphere.create_prev_sphere_with_udims(3)
+    newImageNode = ImageNode('TestImage')
+    newImageNode.create_image_node()
