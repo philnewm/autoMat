@@ -8,39 +8,8 @@ logger = logging.getLogger('nodes')
 # TODO change log level to info before merging to test
 logger.setLevel(logging.DEBUG)
 
-preview_shader = {'baseCol': ['baseColor', 'multi'],
-                  'metal': ['metalness', 'single'],
-                  'spec': ['specular', 'single'],
-                  'specCol': ['specularColor', 'multi'],
-                  'rough': ['specularRoughness', 'single'],
-                  'transmis': ['transmission', 'single'],
-                  'transmisCol': ['transmissionColor', 'multi'],
-                  'transmisDepth': ['transmissionDepth', 'single'],
-                  'transmisScat': ['transmissionScatter', 'multi'],
-                  'sss': ['subsurface', 'single'],
-                  'sssCol': ['subsurfaceColor', 'multi'],
-                  'sssRad': ['subsurfaceRadius', 'multi'],
-                  'coat': ['coat', 'single'],
-                  'coatCol': ['coatColor', 'multi'],
-                  'coatRough': ['coatRoughness', 'single'],
-                  'sheen': ['sheen', 'single'],
-                  'sheenCol': ['SheenColor', 'multi'],
-                  'sheenRough': ['sheenRoughness', 'single'],
-                  'emis': ['emission', 'single'],
-                  'emisCol': ['emissionColor', 'multi'],
-                  'opacity': ['opacity', 'multi'],
-                  'normal': ['normalCamera', 'multi'],
-                  'output': ['outColor', 'multi'],
-                  }
 
-displacement_settings = {'subdivtype': 'aiSubdivType',
-                         'subdiviterations': 'aiSubdivIterations',
-                         'dispheight': 'aiDispHeight',
-                         'padding': 'aiDispPadding',
-                         }
-
-
-class VPPrevShaderNode(object):
+class ShaderNode(object):
     """
     _summary_
 
@@ -48,23 +17,17 @@ class VPPrevShaderNode(object):
         object (_type_): _description_
     """
 
-    def __init__(self, input_name: str = 'prev_shader', input_shader_type: str = 'standardSurface', shader_channels: dict = preview_shader) -> None:
+    def __init__(self, input_name: str, input_shader_type: str, input_supported_channels: list, input_shader_channels: dict) -> None:
         self.socket_connect = '.'
-
         self.node_name = input_name
-        # TODO create new class for geo creation
-        self.geo_name = self.node_name + '_previewSphere_geo'
-
         self.shader_node_name = self.node_name + '_AutoMatShader'
         self.shader_type = input_shader_type
 
-        self.supported_channels = {}
-        self.supported_channels_list = [
-            'baseCol', 'metal', 'rough', 'opacity', 'normal', 'output']
+        self.supported_channels = input_supported_channels
 
-        self.get_new_shader_channels(shader_channels)
+        self._get_shader_channels(input_shader_channels)
 
-    def get_new_shader_channels(self, shader_channels: dict):
+    def _get_shader_channels(self, shader_channels: dict):
         for channel in self.supported_channels_list:
             self.supported_channels[channel] = self.shader_node_name + \
                 self.socket_connect + shader_channels[channel][0]
@@ -123,7 +86,7 @@ class ShadingGroup(object):
 
 class PrevSphere(object):
     def __init__(self, node_name, disp_channel_list) -> None:
-        self.node_name = node_name
+        self.node_name = node_name + '_previewSphere_geo'
         self.shape_node = self.node_name + 'Shape'
 
     def create_prev_sphere_with_udims(self, smooth_steps):
@@ -162,17 +125,42 @@ class PrevSphere(object):
 
 
 class ImageNode(object):
-    def __init__(self, node_name: str) -> None:
-        self.node_name = node_name
+    def __init__(self, input_node_name: str, input_image_node_type: str, channel_list: list) -> None:
+        self.node_name = input_node_name
+        self.socket_connect = '.'
+        self.image_node_type = input_image_node_type
+        self.texture_attr = ''
 
-    def create_image_node(self):
-        cmds.shadingNode('file', name=self.node_name,
+        self._create_image_node(self.image_node_type)
+
+    def _create_image_node(self, image_node_type: str):
+        cmds.shadingNode(image_node_type, name=self.node_name,
                          asTexture=True, isColorManaged=True)
+
+    def load_texture(self, input_texture_attr, input_texture):
+        self.texture_attr = input_texture_attr
+        cmds.setAttr(self.node_name + self.socket_connect + input_texture_attr,
+                     input_texture, type='string')
+
+    def change_tiling_mode(self, input_tiling_attr, mode_id: int = 0):
+        cmds.setAttr(self.node_name + self.socket_connect +
+                     input_tiling_attr, mode_id)
 
 
 if __name__ == '__main__':
     # add testing code for this script file here
     # newSphere = PrevSphere('prev_sphere')
     # newSphere.create_prev_sphere_with_udims(3)
-    newImageNode = ImageNode('TestImage')
-    newImageNode.create_image_node()
+
+    file_node_channel_list = {'outColor': 'outColor',
+                              'outRed': 'outColorR',
+                              'outGreen': 'outColorG',
+                              'outBlue': 'outColorB',
+                              'outAlpha': 'outAlpha'
+                              }
+
+    newImageNode = ImageNode(
+        'TestImage', 'file', channel_list=file_node_channel_list)
+    newImageNode.load_texture(
+        'fileTextureName', 'sourceimages/textures/mud_with_large_stones_38_65_4K/mud_with_large_stones_38_65_diffuse.jpg')
+    newImageNode.change_tiling_mode('uvTilingMode', mode_id=3)
