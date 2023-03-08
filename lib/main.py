@@ -1,9 +1,16 @@
 from importlib import reload
 
 from autoMat.lib import nodes
-from autoMat.lib import utils
+# from autoMat.lib import utils
 reload(nodes)
-reload(utils)
+# reload(utils)
+
+file_node_channel_list = {'outColor': 'outColor',
+                            'outRed': 'outColorR',
+                            'outGreen': 'outColorG',
+                            'outBlue': 'outColorB',
+                            'outAlpha': 'outAlpha'
+                            }
 
 preview_shader = {'baseCol': ['baseColor', 'multi'],
                   'metal': ['metalness', 'single'],
@@ -42,14 +49,11 @@ supported_channels_list = [
 def vp_prev_setup():
     prev_shader = nodes.ShaderNode('PrevShader', 'standardSurface', supported_channels_list, preview_shader)
     prev_shader.create_shader_node()
-
-    test_shad_grp = nodes.ShadingGroup()
-    connect_surface_shader = utils.NodeConnector()
-    connect_surface_shader.connect_nodes(
-        prev_shader.supported_channels['output'], test_shad_grp.supported_channels['vp_surface'])
     
-    diff_texture = nodes.ImageNode('diff_texture', 'file', )     
-
+    # ========== setup mock-up ==========
+    # prev_shader = nodes.PreviewShader(filepath, texture_list)
+    # prev_shader.setup_pbr_nodes()
+    # prev_shader.assign_shader()
 
 if __name__ == '__main__':
     # add testing code for this script file here

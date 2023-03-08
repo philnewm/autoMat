@@ -2,6 +2,8 @@ from maya import cmds
 from maya import mel
 import os
 import logging
+from autoMat.lib import utils
+
 
 logging.basicConfig()
 logger = logging.getLogger('nodes')
@@ -11,28 +13,35 @@ logger.setLevel(logging.DEBUG)
 
 class ShaderNode(object):
     """
-    _summary_
+    General shader node setup
 
     Args:
         object (_type_): _description_
     """
 
-    def __init__(self, input_name: str, input_shader_type: str, input_supported_channels: list, input_shader_channels: dict) -> None:
+    def __init__(self, input_file_path: str, input_tex_file_list: list) -> None:
         self.socket_connect = '.'
-        self.node_name = input_name
-        self.shader_node_name = self.node_name + '_AutoMatShader'
-        self.shader_type = input_shader_type
+        self.name = os.path.split(input_file_path)[1]
+        self.shader_name = self.name + '_AutoMatShader'
+        self.shader_type = None
+        self.tex_file_list = []
 
-        self.supported_channels = input_supported_channels
+        # shader channels
+        self.diff = None
+        self.metal = None
+        self.roughness = None
+        self.opacity = None
+        self.normal = None
+        self.output = None
 
-        self._get_shader_channels(input_shader_channels)
+        self.diff_tex = None
+        self.metal_tex = None
+        self.roughness_tex = None
+        self.opacity_tex = None
+        self.normal_tex = None
+        self.displacement_tex = None
 
-    def _get_shader_channels(self, shader_channels: dict):
-        for channel in self.supported_channels_list:
-            self.supported_channels[channel] = self.shader_node_name + \
-                self.socket_connect + shader_channels[channel][0]
-
-        logger.debug(f'shader channels collected: {self.supported_channels}')
+        self.shading_group = None
 
     def create_shader_node(self):
         cmds.shadingNode(self.shader_type,
@@ -40,35 +49,35 @@ class ShaderNode(object):
 
         logger.info(f'shader node created {self.shader_node_name}')
 
+    def setup_textures(self):
+        for texture in self.file_list:
+            self.texture_list.append(ImageNode(texture))
+
+    def setup_diff_tex(self, file_path):
+        self.diff_tex = ImageNode(file_path)
+        utils.connect_color_channel(self.diff_tex.col_out, self.diff)
+
+    def assign_to_geo(self):
+        self.shading_group = ShadingGroup(self.shading_group_name)
+
 
 class ShadingGroup(object):
-    def __init__(self, input_name: str = 'prev_shader') -> None:
+    def __init__(self, input_name: str = 'prev_shader', channels: str = utils.shading_group_dict) -> None:
         self.socket_connect = '.'
-        self.node_name = 'shading_grp_' + input_name
-        # preview shader
+        self.node_name = input_name + '_ShadGrp'
 
-        # TODO check if corrects
-        self.supported_channels = {'vp_surface': 'surfaceShader',
-                                   'ai_surface': 'aiSurfaceShader',
-                                   'vr_surface': 'rsSurfaceShader',
-                                   'rs_surface': 'rsSurfaceShader',
-                                   'displacement': 'displacementShader',
-                                   'rs_displacement': 'rsDisplacementShader'}
-
-        for channel in self.supported_channels:
-            self.supported_channels[channel] = self.node_name + \
-                self.socket_connect + self.supported_channels[channel]
-
-        # self.surface_shader = self.node_name + '.surfaceShader'
-        # self.ai_surface_shader = self.node_name + '.aiSurfaceShader'
-        # # TODO check if correct
-        # self.rs_material_shader = self.node_name + '.rsmaterialShader'
-        # # TODO check if correct
-        # self.vr_material_shader = self.node_name + '.vrmaterialShader'
-
-        # self.displacement_shader = self.node_name + '.displacementShader'
-        # # TODO redshift displacement shader name
-        # self.rs_displacement_shader = self.node_name + ''
+        self.surface_shader = self.node_name + \
+            channels[utils.shading_group.vp_preview]
+        self.ai_surface_shader = self.node_name + \
+            channels[utils.shading_group.arnold]
+        self.vr_material_shader = self.node_name + \
+            channels[utils.shading_group.vray]
+        self.rs_material_shader = self.node_name + \
+            channels[utils.shading_group.redshift]
+        self.displacement_shader = self.node_name + \
+            channels[utils.shading_group.displacement]
+        self.rs_displacement_shader = self.node_name + \
+            channels[utils.shading_group.redshift_displacement]
 
         # execute default methods
         self.create_shading_grp_node()
@@ -125,16 +134,20 @@ class PrevSphere(object):
 
 
 class ImageNode(object):
-    def __init__(self, input_node_name: str, input_image_node_type: str, channel_list: list) -> None:
+    def __init__(self, input_node_name: str, input_tex_type: str = 'file') -> None:
         self.node_name = input_node_name
+        self.tex_type = input_tex_type
         self.socket_connect = '.'
-        self.image_node_type = input_image_node_type
-        self.texture_attr = ''
+        self.colorSpace = ''
 
-        self._create_image_node(self.image_node_type)
+        self.col_out = self.node_name + self.socket_connect + 'outColor'
 
-    def _create_image_node(self, image_node_type: str):
-        cmds.shadingNode(image_node_type, name=self.node_name,
+    def create_image_node(self):
+        cmds.shadingNode('file', name=self.node_name,
+                         asTexture=True, isColorManaged=True)
+
+    def create_aiImage_node(self):
+        cmds.shadingNode('aiImage', name=self.node_name,
                          asTexture=True, isColorManaged=True)
 
     def load_texture(self, input_texture_attr, input_texture):
@@ -145,6 +158,16 @@ class ImageNode(object):
     def change_tiling_mode(self, input_tiling_attr, mode_id: int = 0):
         cmds.setAttr(self.node_name + self.socket_connect +
                      input_tiling_attr, mode_id)
+
+    def set_color_space(self, color_space_attr, input_color_space):
+        self.color_space = input_color_space
+
+        cmds.setAttr(self.node_name + self.socket_connect +
+                     color_space_attr, self.color_space, type='string')
+
+        cmds.setAttr(self.node_name + '.ignoreColorSpaceFileRules', 1)
+
+        logger.debug(f"Texture Color conversion: {self.colorSpace}")
 
 
 if __name__ == '__main__':
@@ -163,4 +186,6 @@ if __name__ == '__main__':
         'TestImage', 'file', channel_list=file_node_channel_list)
     newImageNode.load_texture(
         'fileTextureName', 'sourceimages/textures/mud_with_large_stones_38_65_4K/mud_with_large_stones_38_65_diffuse.jpg')
-    newImageNode.change_tiling_mode('uvTilingMode', mode_id=3)
+    newImageNode.change_tiling_mode('uvTilingMode', mode_id=0)
+    newImageNode.set_color_space(
+        'colorSpace', 'Input - Generic - sRGB - Texture')

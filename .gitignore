@@ -133,3 +133,4 @@ src/.vscode/settings.json
 .vscode/settings.json
 autoMat.code-workspace
 src/tester.py
+automat_uml.dia.autosave
